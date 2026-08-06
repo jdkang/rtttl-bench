@@ -6,261 +6,487 @@
 <title>RTTTL Bench</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
+  /* ---------------------------------------------------------------- tokens
+     Palette is Gruvbox dark. Two colour roles only: chassis/UI, and the
+     syntax token palette used inside the RTTTL editor. paint() reads the
+     --roll-* values from here, so the canvas cannot drift from the theme. */
   :root{
-    --chassis:#15171c;
-    --chassis-2:#1c1f26;
-    --chassis-3:#23272f;
-    --rule:#30353f;
-    --ink:#c7ccd8;
-    --ink-dim:#767d8d;
-    --lcd:#9fb072;
-    --lcd-hi:#adbd82;
-    --lcd-lo:#8b9c62;
-    --lcd-ink:#1a2110;
-    --lcd-ink-dim:rgba(26,33,16,.42);
-    --red:#df402c;
-    --red-lo:#9a2a1c;
-    --screw:#3a404b;
+    /* gruvbox */
+    --bg-hard:#1d2021;
+    --bg0:#282828;
+    --bg1:#32302f;
+    --bg2:#3c3836;
+    --bg3:#504945;
+    --bg4:#665c54;
+    --fg0:#fbf1c7;
+    --fg1:#ebdbb2;
+    --fg3:#bdae93;
+    --gray:#a89984;
+    --gb-red:#fb4934;
+    --gb-red-lo:#cc241d;
+    /* lightened red for error *text*: plain --gb-red only reaches 4.29:1 on the
+       chassis, under the 4.5:1 AA floor. --gb-red stays for borders and LEDs,
+       where the 3:1 non-text threshold applies. */
+    --gb-red-hi:#fc6a58;
+    --gb-green:#b8bb26;
+    --gb-green-lo:#98971a;
+    --gb-yellow:#fabd2f;
+    --gb-blue:#83a598;
+    --gb-purple:#d3869b;
+    --gb-aqua:#8ec07c;
+    --gb-orange:#fe8019;
+
+    /* chassis roles */
+    --chassis:var(--bg0);
+    --rule:var(--bg3);
+    --ink:var(--fg1);
+    --ink-dim:var(--gray);
+    --red-lo:var(--gb-red-lo);
+    --focus:var(--gb-blue);
+
+    /* LCD phosphor, retuned into the gruvbox green-yellow family */
+    --lcd:#a9b665;
+    --lcd-hi:#bdc75f;
+    --lcd-lo:#8f9a4e;
+    --lcd-ink:#1d2021;
+    --lcd-ink-dim:rgba(29,32,33,.42);
+
+    /* piano roll — read by paint() via getComputedStyle */
+    --roll-rule:rgba(29,32,33,.20);
+    --roll-beat:rgba(29,32,33,.09);
+    --roll-bar:rgba(29,32,33,.74);
+    --roll-rest:rgba(29,32,33,.18);
+    --roll-active:#9d0006;
+    --roll-head:rgba(157,0,6,.85);
+
+    /* syntax tokens */
+    --tok-name:var(--fg0);
+    --tok-colon:var(--gb-orange);
+    --tok-key:var(--gb-aqua);
+    --tok-eq:#9c8e7e;
+    --tok-val:var(--gb-purple);
+    --tok-dur:var(--gb-yellow);
+    --tok-note:var(--gb-green);
+    --tok-sharp:var(--gb-green-lo);
+    --tok-oct:var(--gb-blue);
+    --tok-dot:var(--gb-yellow);
+    --tok-rest:var(--gray);
+    --tok-sep:#9c8e7e;
+
+    /* type scale */
+    --fs-4xs:9.5px;
+    --fs-3xs:10px;
+    --fs-2xs:11px;
+    --fs-xs:12px;
+    --fs-sm:13px;
+    --fs-md:15px;
+    --fs-lg:26px;
+    --fs-xl:34px;
+
+    /* space scale */
+    --sp-1:4px;
+    --sp-2:8px;
+    --sp-3:12px;
+    --sp-4:16px;
+    --sp-5:24px;
+    --sp-6:32px;
+
+    --r-sm:3px;
+    --r-md:5px;
+    --r-lg:10px;
+
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --display:Oxanium,system-ui,sans-serif;
   }
+
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
-    background:
-      radial-gradient(120% 80% at 50% -10%, #1e222a 0%, #101216 70%);
+    background:radial-gradient(120% 80% at 50% -10%, #32302f 0%, #1d2021 70%);
     min-height:100vh;
     color:var(--ink);
-    font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-    font-size:14px;
+    font-family:var(--mono);
+    font-size:var(--fs-sm);
     display:flex;
     align-items:flex-start;
     justify-content:center;
-    padding:28px 16px 60px;
+    padding:var(--sp-5) var(--sp-4) var(--sp-6);
   }
 
   .unit{
     width:100%;
     max-width:820px;
-    background:linear-gradient(180deg,var(--chassis-2),var(--chassis));
+    background:var(--chassis);
     border:1px solid var(--rule);
-    border-radius:10px;
-    box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 22px 50px rgba(0,0,0,.55);
+    border-radius:var(--r-lg);
+    box-shadow:0 1px 0 rgba(251,241,199,.05) inset, 0 22px 50px rgba(0,0,0,.55);
     overflow:hidden;
   }
 
-  /* ---- chassis header ---- */
+  /* ---- title bar ---- */
   .head{
-    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
-    padding:14px 18px;
+    display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
+    padding:var(--sp-3) var(--sp-4);
     border-bottom:1px solid var(--rule);
-    background:linear-gradient(180deg,#20242c,#1a1d24);
+    background:linear-gradient(180deg,var(--bg2),var(--bg1));
   }
+  /* status LEDs: power, playing, parse error. Decorative reinforcement only —
+     the status bar and message line carry the same state as text. */
+  .leds{display:flex;gap:6px;align-items:center;margin-right:var(--sp-1)}
+  .led{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--bg4);
+    box-shadow:0 0 0 1px rgba(0,0,0,.4) inset;
+    transition:background .15s ease, box-shadow .15s ease;
+  }
+  .led.on[data-led="pwr"]{background:var(--gb-green);box-shadow:0 0 6px rgba(184,187,38,.55)}
+  .led.on[data-led="play"]{background:var(--gb-yellow);box-shadow:0 0 6px rgba(250,189,47,.55)}
+  .led.on[data-led="err"]{background:var(--gb-red);box-shadow:0 0 6px rgba(251,73,52,.55)}
   .mark{
-    font-family:Oxanium,system-ui,sans-serif;
+    font-family:var(--display);
     font-weight:700;letter-spacing:.16em;text-transform:uppercase;
-    font-size:15px;color:#e6e9f0;
+    font-size:var(--fs-md);color:var(--fg0);
   }
   .mark span{color:var(--lcd)}
   .sub{
-    font-size:11px;color:var(--ink-dim);letter-spacing:.06em;margin-left:auto;
+    font-size:var(--fs-2xs);color:var(--ink-dim);letter-spacing:.06em;margin-left:auto;
   }
   .gh{
     display:inline-flex;align-self:center;
-    color:var(--ink-dim);border-radius:4px;
+    color:var(--ink-dim);border-radius:var(--r-sm);
   }
-  .gh:hover{color:var(--ink)}
-  .gh:focus-visible{outline:2px solid #566079;outline-offset:2px}
+  .gh:hover{color:var(--fg0)}
+  .gh:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
   .gh svg{display:block;width:16px;height:16px;fill:currentColor}
 
   /* ---- LCD ---- */
   .lcd{
-    margin:16px 18px;
-    background:
-      linear-gradient(180deg,var(--lcd-hi),var(--lcd),var(--lcd-lo));
-    border:1px solid #0c0e0a;
-    border-radius:3px;
-    box-shadow:0 0 0 3px #11141a, 0 8px 18px rgba(0,0,0,.5) inset;
-    padding:12px 14px 10px;
+    margin:var(--sp-4);
+    background:linear-gradient(180deg,var(--lcd-hi),var(--lcd),var(--lcd-lo));
+    border:1px solid #12140d;
+    border-radius:var(--r-sm);
+    box-shadow:0 0 0 3px var(--bg-hard), 0 8px 18px rgba(0,0,0,.5) inset;
+    padding:var(--sp-3) var(--sp-3) 10px;
     color:var(--lcd-ink);
   }
-  .lcd-top{display:flex;align-items:flex-end;gap:12px;min-height:44px}
+  .lcd-top{display:flex;align-items:flex-end;gap:var(--sp-3);min-height:44px}
   .now{
-    font-family:Oxanium,system-ui,sans-serif;
-    font-weight:700;font-size:38px;line-height:.92;letter-spacing:.01em;
+    font-family:var(--display);
+    font-weight:700;font-size:var(--fs-xl);line-height:.92;letter-spacing:.01em;
     min-width:4ch;
   }
   .now.rest{opacity:.4}
-  .now-meta{font-size:11px;line-height:1.5;padding-bottom:4px;letter-spacing:.03em}
+  .now-meta{font-size:var(--fs-2xs);line-height:1.5;padding-bottom:var(--sp-1);letter-spacing:.03em}
   .now-meta b{font-weight:600}
   .title{
-    margin-left:auto;text-align:right;padding-bottom:4px;
-    font-size:12px;font-weight:600;letter-spacing:.02em;
+    margin-left:auto;text-align:right;padding-bottom:var(--sp-1);
+    font-size:var(--fs-xs);font-weight:600;letter-spacing:.02em;
     max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
   .roll{
-    position:relative;height:104px;margin-top:8px;
+    position:relative;height:104px;margin-top:var(--sp-2);
     border-top:1px solid var(--lcd-ink-dim);
     border-bottom:1px solid var(--lcd-ink-dim);
   }
   .roll canvas{display:block;width:100%;height:100%}
   .lcd-bar{
-    display:flex;gap:16px;flex-wrap:wrap;
-    font-size:11px;letter-spacing:.05em;margin-top:7px;
+    display:flex;gap:var(--sp-4);flex-wrap:wrap;
+    font-size:var(--fs-2xs);letter-spacing:.05em;margin-top:7px;
   }
-  .lcd-bar .k{color:var(--lcd-ink-dim);margin-right:5px}
+  .lcd-bar .k{color:var(--lcd-ink-dim);margin-right:var(--sp-1)}
   .lcd-bar .clock{margin-left:auto;font-variant-numeric:tabular-nums}
 
-  /* ---- source ---- */
-  .src{padding:0 18px 4px}
+  /* ---- editor ----
+     The <pre> and the <textarea> are stacked and must render text identically;
+     any difference in font, padding, or wrapping shows up as visible drift
+     between the glyphs and their colours. Shared rules live in one block. */
+  .src{padding:0 var(--sp-4) var(--sp-1)}
   label.field{
-    display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--ink-dim);margin-bottom:6px;
+    display:block;font-size:var(--fs-3xs);letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-dim);margin-bottom:var(--sp-2);
   }
-  textarea{
-    width:100%;min-height:96px;resize:vertical;
-    background:#101318;color:#dfe4ee;
-    border:1px solid var(--rule);border-radius:5px;
-    padding:10px 12px;
-    font:400 13px/1.55 "IBM Plex Mono",monospace;
-    outline:none;
+  .editor{
+    position:relative;
+    min-height:96px;height:104px;
+    background:var(--bg-hard);
+    border:1px solid var(--rule);
+    border-left:3px solid var(--state,var(--bg3));
+    border-radius:var(--r-md);
+    overflow:hidden;
+    resize:vertical;
+    transition:border-color .12s ease, box-shadow .12s ease;
   }
-  textarea:focus{border-color:#566079;box-shadow:0 0 0 3px rgba(159,176,114,.14)}
-  .msg{min-height:19px;margin-top:7px;font-size:12px;line-height:1.5}
-  .msg.err{color:#f08a78}
-  .msg.warn{color:#cbb46a}
+  .editor[data-state="ok"]{--state:var(--gb-green-lo)}
+  .editor[data-state="warn"]{--state:var(--gb-yellow)}
+  .editor[data-state="err"]{--state:var(--gb-red)}
+  .editor:focus-within{border-top-color:var(--focus);border-right-color:var(--focus);border-bottom-color:var(--focus);box-shadow:0 0 0 3px rgba(131,165,152,.18)}
+
+  .hl,
+  #src{
+    position:absolute;inset:0;
+    margin:0;border:0;
+    padding:10px var(--sp-3);
+    font:400 var(--fs-sm)/1.62 var(--mono);
+    letter-spacing:0;
+    white-space:pre-wrap;
+    overflow-wrap:break-word;
+    word-break:normal;
+    tab-size:2;
+  }
+  .hl{
+    overflow:hidden;               /* scrolled programmatically to match */
+    color:var(--tok-name);
+    pointer-events:none;
+    user-select:none;
+  }
+  #src{
+    width:100%;height:100%;
+    background:transparent;
+    color:transparent;
+    caret-color:var(--fg0);
+    resize:none;outline:none;
+    overflow:auto;
+    /* hiding the scrollbar keeps the text width identical to the <pre>,
+       which is what stops the two layers from wrapping differently */
+    scrollbar-width:none;
+  }
+  #src::-webkit-scrollbar{width:0;height:0}
+  #src::selection{background:rgba(131,165,152,.30)}
+
+  .t-name{color:var(--tok-name)}
+  .t-colon{color:var(--tok-colon);font-weight:700}
+  .t-key{color:var(--tok-key)}
+  .t-eq{color:var(--tok-eq)}
+  .t-val{color:var(--tok-val)}
+  .t-dur{color:var(--tok-dur)}
+  .t-note{color:var(--tok-note)}
+  .t-sharp{color:var(--tok-sharp)}
+  .t-oct{color:var(--tok-oct)}
+  .t-dot{color:var(--tok-dot)}
+  .t-rest{color:var(--tok-rest);font-style:italic}
+  .t-sep{color:var(--tok-sep)}
+  .s-warn{text-decoration:underline wavy var(--gb-yellow);text-underline-offset:3px}
+  .s-err{text-decoration:underline wavy var(--gb-red);text-underline-offset:3px}
+
+  .msg{min-height:19px;margin-top:7px;font-size:var(--fs-xs);line-height:1.5}
+  .msg.err{color:var(--gb-red-hi)}
+  .msg.warn{color:var(--gb-yellow)}
   .msg.ok{color:var(--ink-dim)}
 
   /* ---- controls ---- */
   .panel{
-    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
-    margin:14px 18px 18px;padding-top:16px;
+    display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;
+    margin:var(--sp-3) var(--sp-4) var(--sp-4);padding-top:var(--sp-4);
     border-top:1px solid var(--rule);
   }
   .transport{
     appearance:none;border:0;cursor:pointer;
-    width:120px;height:52px;border-radius:6px;
-    font-family:Oxanium,system-ui,sans-serif;
-    font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;
+    width:120px;height:52px;border-radius:var(--r-md);
+    font-family:var(--display);
+    font-weight:700;font-size:var(--fs-md);letter-spacing:.14em;text-transform:uppercase;
     background:linear-gradient(180deg,var(--lcd-hi),var(--lcd-lo));
-    color:#141a0c;
-    box-shadow:0 3px 0 #5f6c43, 0 6px 12px rgba(0,0,0,.45);
+    color:var(--lcd-ink);
+    box-shadow:0 3px 0 #5c6533, 0 6px 12px rgba(0,0,0,.45);
     transition:transform .06s ease, box-shadow .06s ease;
   }
-  .transport:active{transform:translateY(3px);box-shadow:0 0 0 #5f6c43,0 2px 6px rgba(0,0,0,.5)}
+  .transport:active{transform:translateY(3px);box-shadow:0 0 0 #5c6533,0 2px 6px rgba(0,0,0,.5)}
   .transport.on{
-    background:linear-gradient(180deg,#ef5a44,var(--red));
-    color:#2a0a05;box-shadow:0 3px 0 var(--red-lo),0 6px 16px rgba(223,64,44,.28);
+    background:linear-gradient(180deg,#fe8019,var(--gb-red));
+    color:#2a0a05;box-shadow:0 3px 0 var(--red-lo),0 6px 16px rgba(251,73,52,.28);
   }
-  .transport:focus-visible{outline:2px solid #dfe4ee;outline-offset:3px}
+  .transport:focus-visible{outline:2px solid var(--fg0);outline-offset:3px}
 
   .cancel{
     appearance:none;cursor:pointer;
-    height:52px;padding:0 22px;border-radius:6px;
-    background:linear-gradient(180deg,#282c35,#1d2027);
-    border:1px solid #3c424e;color:#b9bfcd;
-    font-family:Oxanium,system-ui,sans-serif;
-    font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;
-    box-shadow:0 3px 0 #14161b, 0 6px 12px rgba(0,0,0,.4);
+    height:52px;padding:0 22px;border-radius:var(--r-md);
+    background:linear-gradient(180deg,var(--bg2),var(--bg1));
+    border:1px solid var(--bg3);color:var(--fg3);
+    font-family:var(--display);
+    font-weight:700;font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;
+    box-shadow:0 3px 0 var(--bg-hard), 0 6px 12px rgba(0,0,0,.4);
     transition:transform .06s ease, box-shadow .06s ease, color .12s ease;
   }
-  .cancel:not(:disabled):hover{color:#f08a78;border-color:var(--red-lo)}
-  .cancel:not(:disabled):active{transform:translateY(3px);box-shadow:0 0 0 #14161b,0 2px 6px rgba(0,0,0,.5)}
+  .cancel:not(:disabled):hover{color:var(--gb-orange);border-color:var(--gb-orange)}
+  .cancel:not(:disabled):active{transform:translateY(3px);box-shadow:0 0 0 var(--bg-hard),0 2px 6px rgba(0,0,0,.5)}
   .cancel:disabled{opacity:.32;cursor:default}
-  .cancel:focus-visible{outline:2px solid #dfe4ee;outline-offset:3px}
+  .cancel:focus-visible{outline:2px solid var(--fg0);outline-offset:3px}
 
-  .knobs{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
-  .knob{display:flex;flex-direction:column;gap:5px}
-  .knob>span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+  .knobs{display:flex;gap:var(--sp-4);flex-wrap:wrap;align-items:center}
+  .knob{display:flex;flex-direction:column;gap:var(--sp-1)}
+  .knob>span{font-size:var(--fs-3xs);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+  .knob>span b{color:var(--fg3);font-weight:600}
   select{
-    appearance:none;background:#101318 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='6'><path d='M0 0h9L4.5 6z' fill='%23767d8d'/></svg>") no-repeat right 9px center;
-    color:var(--ink);border:1px solid var(--rule);border-radius:4px;
-    padding:6px 26px 6px 9px;font:400 12px "IBM Plex Mono",monospace;cursor:pointer;
+    appearance:none;background:var(--bg-hard) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='6'><path d='M0 0h9L4.5 6z' fill='%23a89984'/></svg>") no-repeat right 9px center;
+    color:var(--ink);border:1px solid var(--rule);border-radius:var(--r-sm);
+    padding:6px 26px 6px 9px;font:400 var(--fs-xs) var(--mono);cursor:pointer;
   }
-  select:focus-visible,input:focus-visible{outline:2px solid #566079;outline-offset:1px}
-  input[type=range]{width:104px;accent-color:var(--lcd)}
-  .check{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink);cursor:pointer}
-  input[type=checkbox]{accent-color:var(--lcd);width:15px;height:15px;cursor:pointer}
+  select:hover{border-color:var(--bg4)}
+  select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+  input[type=range]{
+    appearance:none;-webkit-appearance:none;
+    width:112px;height:16px;background:transparent;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:4px;border-radius:2px;background:var(--bg3);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:13px;height:13px;margin-top:-4.5px;border-radius:50%;
+    background:var(--lcd);border:1px solid var(--bg-hard);
+    box-shadow:0 1px 2px rgba(0,0,0,.55);
+  }
+  input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--bg3)}
+  input[type=range]::-moz-range-thumb{
+    width:12px;height:12px;border-radius:50%;
+    background:var(--lcd);border:1px solid var(--bg-hard);
+  }
+  input[type=range]:disabled{cursor:default}
+  input[type=range]:disabled::-webkit-slider-thumb{background:var(--bg4)}
+  input[type=range]:disabled::-moz-range-thumb{background:var(--bg4)}
+
+  .check{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-xs);color:var(--ink);cursor:pointer}
+  input[type=checkbox]{
+    appearance:none;-webkit-appearance:none;
+    width:16px;height:16px;margin:0;cursor:pointer;
+    border:1px solid var(--bg4);border-radius:var(--r-sm);
+    background:var(--bg-hard);
+    display:grid;place-content:center;
+    transition:background .12s ease, border-color .12s ease;
+  }
+  input[type=checkbox]::after{
+    content:"";width:9px;height:5px;
+    border-left:2px solid var(--lcd-ink);border-bottom:2px solid var(--lcd-ink);
+    transform:rotate(-45deg) translate(1px,-1px);
+    opacity:0;
+  }
+  input[type=checkbox]:checked{background:var(--lcd);border-color:var(--lcd)}
+  input[type=checkbox]:checked::after{opacity:1}
+
+  .reset{
+    margin-left:auto;background:none;border:1px solid var(--rule);border-radius:var(--r-sm);
+    color:var(--ink-dim);font:400 var(--fs-2xs) var(--mono);
+    padding:var(--sp-1) 10px;cursor:pointer;
+    transition:color .12s ease, border-color .12s ease;
+  }
+  .reset:hover{color:var(--ink);border-color:var(--bg4)}
+  .reset:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
   /* ---- service notes ---- */
-  .notes{margin:0 18px;padding-top:15px;border-top:1px solid var(--rule)}
-  .notes-head{display:flex;align-items:center;gap:12px}
+  .notes{margin:0 var(--sp-4);padding-top:var(--sp-4);border-top:1px solid var(--rule)}
+  .notes-head{display:flex;align-items:center;gap:var(--sp-3)}
   .notes-head h2{
-    margin:0;font-family:Oxanium,system-ui,sans-serif;font-weight:700;
-    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);
+    margin:0;font-family:var(--display);font-weight:700;
+    font-size:var(--fs-2xs);letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);
   }
-  .notes-head .hint{font-size:11px;color:#5f6675}
+  .notes-head .hint{font-size:var(--fs-2xs);color:var(--ink-dim)}
   .notes-toggle{
-    margin-left:auto;background:none;border:1px solid var(--rule);border-radius:4px;
-    color:var(--ink-dim);font:400 11px "IBM Plex Mono",monospace;
-    padding:4px 10px;cursor:pointer;
+    margin-left:auto;background:none;border:1px solid var(--rule);border-radius:var(--r-sm);
+    color:var(--ink-dim);font:400 var(--fs-2xs) var(--mono);
+    padding:var(--sp-1) 10px;cursor:pointer;
+    transition:color .12s ease, border-color .12s ease;
   }
-  .notes-toggle:hover{color:var(--ink);border-color:#454b58}
-  .notes-toggle:focus-visible{outline:2px solid #566079;outline-offset:2px}
+  .notes-toggle:hover{color:var(--ink);border-color:var(--bg4)}
+  .notes-toggle:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
-  .tabs{display:flex;gap:2px;flex-wrap:wrap;margin-top:12px}
+  .tabs{display:flex;gap:2px;flex-wrap:wrap;margin-top:var(--sp-3)}
   .tabs button{
     background:none;border:0;border-bottom:2px solid transparent;
-    color:var(--ink-dim);font:500 12px "IBM Plex Mono",monospace;
-    padding:6px 10px;cursor:pointer;
+    color:var(--ink-dim);font:500 var(--fs-xs) var(--mono);
+    padding:var(--sp-2) 10px;cursor:pointer;
+    transition:color .12s ease;
   }
   .tabs button:hover{color:var(--ink)}
   .tabs button[aria-selected="true"]{color:var(--lcd);border-bottom-color:var(--lcd)}
-  .tabs button:focus-visible{outline:2px solid #566079;outline-offset:-2px}
+  .tabs button:focus-visible{outline:2px solid var(--focus);outline-offset:-2px}
 
   .tabpanel{
-    padding:15px 0 4px;max-width:70ch;
-    font-size:12.5px;line-height:1.72;color:#a4abbb;
+    padding:var(--sp-4) 0 var(--sp-1);max-width:70ch;
+    font-size:var(--fs-xs);line-height:1.75;color:var(--fg3);
   }
   .tabpanel[hidden]{display:none}
   .tabpanel p{margin:0 0 11px}
   .tabpanel p:last-child{margin-bottom:0}
   .tabpanel h3{
-    margin:18px 0 7px;font-family:Oxanium,system-ui,sans-serif;
-    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-    font-weight:700;color:#dfe4ee;
+    margin:var(--sp-5) 0 7px;font-family:var(--display);
+    font-size:var(--fs-2xs);letter-spacing:.14em;text-transform:uppercase;
+    font-weight:700;color:var(--fg0);
   }
   .tabpanel h3:first-child{margin-top:0}
   .tabpanel code{
-    background:#101318;color:#dbe0ea;border-radius:3px;
-    padding:1px 5px;font-size:11.5px;
+    background:var(--bg-hard);color:var(--fg1);border-radius:var(--r-sm);
+    padding:1px 5px;font-size:var(--fs-2xs);
   }
-  .tabpanel a{color:var(--lcd)}
+  .tabpanel a{color:var(--gb-aqua)}
   .tabpanel ul{margin:0 0 11px;padding-left:18px}
-  .tabpanel li{margin-bottom:5px}
+  .tabpanel li{margin-bottom:var(--sp-1)}
 
   .tag{
-    display:inline-block;font-size:9px;font-weight:600;letter-spacing:.13em;
-    text-transform:uppercase;padding:2px 6px;border-radius:3px;
+    display:inline-block;font-size:var(--fs-4xs);font-weight:600;letter-spacing:.13em;
+    text-transform:uppercase;padding:2px 6px;border-radius:var(--r-sm);
     margin-right:7px;position:relative;top:-1px;
   }
-  .tag.src{background:rgba(159,176,114,.15);color:var(--lcd)}
-  .tag.doc{background:rgba(126,158,224,.15);color:#8ea9de}
-  .tag.est{background:rgba(223,64,44,.16);color:#e5806f}
+  .tag.src{background:rgba(184,187,38,.16);color:var(--gb-green)}
+  .tag.doc{background:rgba(131,165,152,.16);color:var(--gb-blue)}
+  .tag.est{background:rgba(254,128,25,.16);color:var(--gb-orange)}
 
-  .scroller{overflow-x:auto;margin:0 0 12px}
-  table.spec{width:100%;min-width:420px;border-collapse:collapse;font-size:11.5px}
+  .scroller{overflow-x:auto;margin:0 0 var(--sp-3)}
+  table.spec{width:100%;min-width:420px;border-collapse:collapse;font-size:var(--fs-2xs)}
   .spec th{
-    text-align:left;padding:0 12px 6px 0;border-bottom:1px solid var(--rule);
-    font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    text-align:left;padding:0 var(--sp-3) var(--sp-2) 0;border-bottom:1px solid var(--rule);
+    font-size:var(--fs-4xs);letter-spacing:.13em;text-transform:uppercase;
     font-weight:600;color:var(--ink-dim);white-space:nowrap;
   }
-  .spec td{padding:6px 12px 6px 0;border-bottom:1px solid #232732;vertical-align:top}
-  .spec td:first-child{color:#dfe4ee;white-space:nowrap}
+  .spec td{padding:var(--sp-2) var(--sp-3) var(--sp-2) 0;border-bottom:1px solid var(--bg2);vertical-align:top}
+  .spec td:first-child{color:var(--fg0);white-space:nowrap}
   .spec tr:last-child td{border-bottom:0}
 
-  .foot{
-    padding:0 18px 16px;font-size:11px;line-height:1.6;color:var(--ink-dim);
+  /* ---- status bar ---- */
+  .statusbar{
+    display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
+    margin-top:var(--sp-4);
+    padding:7px var(--sp-4);
+    border-top:1px solid var(--rule);
+    background:var(--bg1);
+    font-size:var(--fs-2xs);letter-spacing:.04em;
+    color:var(--ink-dim);
   }
-  .foot code{color:#a8b0c2}
+  .st-state{
+    display:inline-flex;align-items:center;gap:6px;
+    font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--lcd-ink);background:var(--lcd);
+    padding:2px var(--sp-2);border-radius:var(--r-sm);
+  }
+  .statusbar[data-state="playing"] .st-state{background:var(--gb-yellow)}
+  .statusbar[data-state="stopping"] .st-state{background:var(--gb-orange)}
+  .statusbar[data-state="error"] .st-state{background:var(--gb-red);color:var(--bg-hard)}
+  .st-item b{color:var(--fg3);font-weight:600}
+  .st-right{margin-left:auto;display:flex;gap:var(--sp-3);flex-wrap:wrap}
+  .st-right code{
+    background:var(--bg-hard);color:var(--fg3);border-radius:var(--r-sm);
+    padding:1px 5px;font-size:var(--fs-3xs);
+  }
+
+  .foot{
+    padding:var(--sp-3) var(--sp-4) var(--sp-4);
+    font-size:var(--fs-2xs);line-height:1.6;color:var(--ink-dim);
+  }
+  .foot code{
+    color:var(--fg3);background:var(--bg-hard);
+    border-radius:var(--r-sm);padding:1px 5px;
+  }
 
   @media (max-width:560px){
-    .now{font-size:30px}
+    .now{font-size:var(--fs-lg)}
     .title{max-width:100%;}
-    .transport{width:100%}
+    .transport,.cancel{width:100%}
+    .st-right{margin-left:0}
   }
   @media (prefers-reduced-motion:reduce){
-    .transport{transition:none}
+    .transport,.cancel,.led,.editor,.reset,.notes-toggle,
+    .tabs button,select,input[type=checkbox]{transition:none}
   }
 </style>
 </head>
@@ -268,6 +494,11 @@
 <div class="unit">
 
   <div class="head">
+    <div class="leds" aria-hidden="true">
+      <span class="led on" data-led="pwr" id="ledPwr"></span>
+      <span class="led" data-led="play" id="ledPlay"></span>
+      <span class="led" data-led="err" id="ledErr"></span>
+    </div>
     <div class="mark">RTTTL <span>Bench</span></div>
     <div class="sub">monophonic tone generator &middot; web audio</div>
     <a class="gh" href="https://github.com/jdkang/rtttl-bench" target="_blank" rel="noopener" aria-label="Source on GitHub">
@@ -296,7 +527,10 @@
 
   <div class="src">
     <label class="field" for="src">RTTTL string</label>
-    <textarea id="src" spellcheck="false" autocomplete="off">Scale:d=32,o=5,b=160:c,d,e,f,g,a,b,c6,b,a,g,f,e,d,c</textarea>
+    <div class="editor" id="editor">
+      <pre class="hl" id="hl" aria-hidden="true"></pre>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">Scale:d=32,o=5,b=160:c,d,e,f,g,a,b,c6,b,a,g,f,e,d,c</textarea>
+    </div>
     <div class="msg ok" id="msg">Paste a tune and press play.</div>
   </div>
 
@@ -340,6 +574,7 @@
       </label>
       <label class="check"><input type="checkbox" id="loop"> Loop</label>
     </div>
+    <button class="reset" id="reset" title="Restore defaults and forget saved settings">Reset settings</button>
   </div>
 
   <section class="notes">
@@ -449,6 +684,17 @@
       </div>
     </div>
   </section>
+
+  <div class="statusbar" id="statusbar" data-state="ready">
+    <span class="st-state" id="stState">ready</span>
+    <span class="st-item">voice <b id="stVoice">sine</b></span>
+    <span class="st-item">tuning <b id="stTuning">A4=440</b></span>
+    <span class="st-item" id="stWarnWrap" hidden><b id="stWarn">0</b> warnings</span>
+    <span class="st-right">
+      <span><code>space</code> play</span>
+      <span><code>esc</code> cut</span>
+    </span>
+  </div>
 
   <div class="foot">
     <code>space</code> starts, and stops at the end of the note that's sounding. <code>esc</code> or Cancel cuts immediately. Nothing leaves the page.
@@ -735,6 +981,7 @@ function startPlayback(){
   playEl.textContent = "Stop";
   playEl.classList.add("on");
   cancelEl.disabled = false;
+  refreshStatus();
   requestAnimationFrame(tick);
 }
 
@@ -772,6 +1019,7 @@ function stopPlayback(){
   endsAt = noteEnd;
   stopping = true;
   playEl.textContent = "Stopping";
+  refreshStatus();
 }
 
 /* Cancel: cut it now. The 3 ms ramp is inaudible but avoids a parting click. */
@@ -789,6 +1037,7 @@ function endPlayback(){
   paint(-1);
   setNow(null);
   clockEl.textContent = fmt(0);
+  refreshStatus();
 }
 
 /* ------------------------------------------------------------------ ui */
@@ -810,12 +1059,168 @@ const clockEl  = document.getElementById("mClock");
 const totalEl  = document.getElementById("mTotal");
 const canvas   = document.getElementById("roll");
 const cx       = canvas.getContext("2d");
+const hlEl     = document.getElementById("hl");
+const editorEl = document.getElementById("editor");
+const barEl    = document.getElementById("statusbar");
+const stState  = document.getElementById("stState");
+const stVoice  = document.getElementById("stVoice");
+const stTuning = document.getElementById("stTuning");
+const stWarn   = document.getElementById("stWarn");
+const stWarnWrap = document.getElementById("stWarnWrap");
+const ledPlay  = document.getElementById("ledPlay");
+const ledErr   = document.getElementById("ledErr");
 
 let current = null;   // last successfully parsed song
 
 function fmt(sec){
   const s = Math.max(0, sec);
   return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}.${Math.floor((s*10)%10)}`;
+}
+
+/* ------------------------------------------------- syntax highlighting
+
+   A view layer over the same text parseRTTTL reads. It deliberately does not
+   call the parser: that function is a port whose behaviour must not change,
+   and it reports problems by token name rather than by position. To stop the
+   two from disagreeing about what is valid, this reuses the STRICT and LOOSE
+   patterns and mirrors the parser's per-token normalisation, while reporting
+   offsets into the raw string so the marks land under the right characters.
+
+   One deliberate difference: parseRTTTL throws on the first unreadable note,
+   so the message line can only name one. The editor marks every bad token. */
+
+const ESCAPES = { "&":"&amp;", "<":"&lt;", ">":"&gt;" };
+function escapeHTML(s){ return s.replace(/[&<>]/g, c => ESCAPES[c]); }
+
+/* severity of one data token, by the same rules the parser applies */
+function noteSeverity(raw){
+  const norm = raw.toLowerCase().replace(/\s/g, "");
+  if (!norm) return "";                          // parser skips empty tokens
+  const bare = norm.replace(/\./g, "");
+  if (STRICT.test(bare)) return "";
+  if (LOOSE.test(bare))  return "warn";          // accepted, with a warning
+  return "err";                                  // parser throws here
+}
+
+/* severity of one control assignment. The parser never throws in this
+   section — the worst case is a warning and the value being ignored. */
+function controlSeverity(key, val){
+  const v = parseInt(val, 10);
+  if (key === "o") return (!Number.isFinite(v) || ![4,5,6,7].includes(v)) ? "warn" : "";
+  if (key === "d") return (!Number.isFinite(v) || v === 0 || ![1,2,4,8,16,32].includes(v)) ? "warn" : "";
+  if (key === "b") return (!Number.isFinite(v) || v <= 0 || v < 10 || v > 500) ? "warn" : "";
+  return "warn";                                 // unknown control, ignored
+}
+
+function tokenizeRTTTL(str){
+  const spans = [];
+  const push = (s, e, cls, sev) => {
+    if (e > s) spans.push({ s, e, cls, sev: cls === "sep" ? "" : (sev || "") });
+  };
+
+  const colons = [];
+  for (let i = 0; i < str.length; i++) if (str[i] === ":") colons.push(i);
+  const nameEnd = colons.length > 0 ? colons[0] : str.length;
+  const ctlEnd  = colons.length > 1 ? colons[1] : str.length;
+
+  push(0, nameEnd, "name");
+  if (colons.length > 0) push(nameEnd, nameEnd + 1, "colon");
+  if (colons.length > 0) scanControl(str, nameEnd + 1, ctlEnd, push);
+  if (colons.length > 1) push(ctlEnd, ctlEnd + 1, "colon");
+  if (colons.length > 1) scanData(str, ctlEnd + 1, str.length, push);
+  return spans;
+}
+
+function scanControl(str, from, to, push){
+  let i = from;
+  while (i < to){
+    let j = i;
+    while (j < to && str[j] !== ",") j++;
+    scanAssignment(str, i, j, push);
+    if (j < to) push(j, j + 1, "sep");
+    i = j + 1;
+  }
+}
+
+function scanAssignment(str, from, to, push){
+  if (!str.slice(from, to).trim()){ push(from, to, "sep"); return; }
+  let eq = -1;
+  for (let k = from; k < to; k++) if (str[k] === "="){ eq = k; break; }
+  if (eq < 0){ push(from, to, "key", "warn"); return; }   // no "=": ignored
+  const key = str.slice(from, eq).trim().toLowerCase();
+  const sev = controlSeverity(key, str.slice(eq + 1, to).trim());
+  push(from, eq, "key", sev);
+  push(eq, eq + 1, "eq");
+  push(eq + 1, to, "val", sev);
+}
+
+function scanData(str, from, to, push){
+  let i = from;
+  while (i < to){
+    let j = i;
+    while (j < to && str[j] !== "," && str[j] !== ";") j++;
+    scanNote(str, i, j, push);
+    if (j < to) push(j, j + 1, "sep");
+    i = j + 1;
+  }
+}
+
+/* Classify each character, then merge equal neighbours into spans. Working
+   per character keeps the offsets exact even when a token contains spaces,
+   which the parser strips before matching. */
+function scanNote(str, from, to, push){
+  if (!str.slice(from, to).trim()){ push(from, to, "sep"); return; }
+  const sev = noteSeverity(str.slice(from, to));
+  const cls = [];
+  let seenPitch = false;
+  for (let k = from; k < to; k++){
+    const ch = str[k], lo = ch.toLowerCase();
+    if (/\s/.test(ch))              { cls.push("sep"); continue; }
+    if (ch === ".")                 { cls.push("dot"); continue; }
+    if (ch === "#")                 { cls.push("sharp"); continue; }
+    if (lo >= "0" && lo <= "9")     { cls.push(seenPitch ? "oct" : "dur"); continue; }
+    if (!seenPitch && lo === "p")   { seenPitch = true; cls.push("rest"); continue; }
+    if (!seenPitch && lo >= "a" && lo <= "g"){ seenPitch = true; cls.push("note"); continue; }
+    cls.push("note");
+  }
+  let k = 0;
+  while (k < cls.length){
+    let m = k + 1;
+    while (m < cls.length && cls[m] === cls[k]) m++;
+    push(from + k, from + m, cls[k], sev);
+    k = m;
+  }
+}
+
+function renderHighlight(){
+  const raw = srcEl.value;
+  let html = "";
+  for (const sp of tokenizeRTTTL(raw)){
+    const cls = "t-" + sp.cls + (sp.sev ? " s-" + sp.sev : "");
+    html += `<span class="${cls}">${escapeHTML(raw.slice(sp.s, sp.e))}</span>`;
+  }
+  // trailing newline: a <pre> collapses its final line and shifts the last row
+  hlEl.innerHTML = html + "\n";
+  syncScroll();
+}
+
+function syncScroll(){
+  hlEl.scrollTop  = srcEl.scrollTop;
+  hlEl.scrollLeft = srcEl.scrollLeft;
+}
+
+/* the status bar and the title-bar LEDs both report state derived here */
+function refreshStatus(){
+  const state = !current ? "error" : stopping ? "stopping" : playing ? "playing" : "ready";
+  barEl.dataset.state = state;
+  stState.textContent = state;
+  ledPlay.classList.toggle("on", playing);
+  ledErr.classList.toggle("on", !current);
+  stVoice.textContent  = voiceEl.value;
+  stTuning.textContent = tuningEl.value === "demo" ? "rtttl.js demo" : "A4=440";
+  const w = current ? current.warnings.length : 0;
+  stWarn.textContent = w;
+  stWarnWrap.hidden = w === 0;
 }
 
 function compile(){
@@ -836,6 +1241,8 @@ function compile(){
       msgEl.className = "msg ok";
       msgEl.textContent = `${song.notes.length} notes, ${song.total.toFixed(1)} s.`;
     }
+    editorEl.dataset.state = song.warnings.length ? "warn" : "ok";
+    refreshStatus();
     paint(-1);
     return song;
   }catch(err){
@@ -845,6 +1252,8 @@ function compile(){
     nameEl.textContent = "no tune loaded";
     ["mO","mD","mB","mN"].forEach(id => document.getElementById(id).textContent = "—");
     totalEl.textContent = fmt(0);
+    editorEl.dataset.state = "err";
+    refreshStatus();
     paint(-1);
     return null;
   }
@@ -864,13 +1273,26 @@ function setNow(note){
     : `<div><b>${note.frequency.toFixed(1)}</b> Hz</div><div>${(note.seconds*1000).toFixed(0)} ms</div>`;
 }
 
-/* piano roll: x = time, y = pitch, red hairline = playhead */
+/* piano roll: x = time, y = pitch, red hairline = playhead
+
+   Its colours live in CSS with the rest of the theme so the canvas can't
+   drift from the chassis. paint() runs once per animation frame, so they are
+   read through getComputedStyle only here and cached — doing it per frame
+   would force a style recalculation on every tick. */
+const rollColors = {};
+function readRollColors(){
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["rule","beat","bar","rest","active","head"])
+    rollColors[k] = cs.getPropertyValue("--roll-" + k).trim();
+}
+
 function sizeCanvas(){
   const r = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
   canvas.width  = Math.max(1, Math.round(r.width  * dpr));
   canvas.height = Math.max(1, Math.round(r.height * dpr));
   cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  readRollColors();
   paint(playing ? liveIndex() : -1);
 }
 
@@ -890,25 +1312,36 @@ function paint(activeIndex){
   const span = hi - lo || 1;
   const yOf = s => pad + (H - 2*pad) * (1 - (s - lo) / span);
 
+  const bar = Math.max(3, Math.min(9, (H - 2*pad) / (span + 1) * 1.6));
+  const scale = W / current.total;
+
+  // beat rules, so the grid reads as musical time rather than an arbitrary axis
+  const beat = 60 / current.b;
+  if (beat * scale >= 6){
+    cx.strokeStyle = rollColors.beat;
+    cx.lineWidth = 1;
+    for (let t = beat; t < current.total; t += beat){
+      const x = Math.round(t * scale) + .5;
+      cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, H); cx.stroke();
+    }
+  }
+
   // octave rules at every C
-  cx.strokeStyle = "rgba(26,33,16,.18)";
+  cx.strokeStyle = rollColors.rule;
   cx.lineWidth = 1;
   for (let s = Math.ceil(lo/12)*12; s <= hi; s += 12){
     const y = Math.round(yOf(s)) + .5;
     cx.beginPath(); cx.moveTo(0, y); cx.lineTo(W, y); cx.stroke();
   }
 
-  const bar = Math.max(3, Math.min(9, (H - 2*pad) / (span + 1) * 1.6));
-  const scale = W / current.total;
-
   current.notes.forEach((n, i) => {
     const x = n.at * scale;
     const w = Math.max(1.2, n.seconds * scale - 0.8);
     if (n.rest){
-      cx.fillStyle = "rgba(26,33,16,.16)";
+      cx.fillStyle = rollColors.rest;
       cx.fillRect(x, H - 3, w, 1.5);
     } else {
-      cx.fillStyle = i === activeIndex ? "#df402c" : "rgba(26,33,16,.72)";
+      cx.fillStyle = i === activeIndex ? rollColors.active : rollColors.bar;
       cx.fillRect(x, yOf(n.semi) - bar/2, w, bar);
     }
   });
@@ -916,7 +1349,7 @@ function paint(activeIndex){
   if (activeIndex >= 0){
     const n = current.notes[activeIndex];
     const x = Math.round((n.at + n.seconds/2) * scale) + .5;
-    cx.strokeStyle = "rgba(223,64,44,.85)";
+    cx.strokeStyle = rollColors.head;
     cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, H); cx.stroke();
   }
 }
@@ -946,22 +1379,81 @@ function tick(){
   requestAnimationFrame(tick);
 }
 
+/* --------------------------------------------------------- saved settings */
+
+/* The five bench controls persist in one localStorage key so a reload keeps
+   your setup. A stored blob is untrusted input — it may be stale or hand-
+   edited — so every value is validated against the control itself before it
+   is applied. If storage is unavailable (private mode, blocked), settings
+   simply don't stick; nothing else may break. */
+const SETTINGS_KEY = "rtttl-bench:settings";
+
+function saveSettings(){
+  const s = {
+    voice: voiceEl.value,
+    duty: Number(dutyEl.value),
+    vol: Number(volEl.value),
+    tuning: tuningEl.value,
+    loop: loopEl.checked,
+  };
+  try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
+}
+
+function loadSettings(){
+  let s;
+  try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY)); } catch (e) { return; }
+  if (!s || typeof s !== "object") return;
+  const hasOption = (sel, v) => [...sel.options].some(o => o.value === v);
+  if (hasOption(voiceEl, s.voice)) voiceEl.value = s.voice;
+  if (hasOption(tuningEl, s.tuning)) tuningEl.value = s.tuning;
+  const clamp = (el, v) => {
+    const n = Number(v);
+    if (Number.isFinite(n)) el.value = Math.min(el.max, Math.max(el.min, n));
+  };
+  clamp(dutyEl, s.duty);
+  clamp(volEl, s.vol);
+  loopEl.checked = s.loop === true;
+  dutyVal.textContent = dutyEl.value + "%";
+}
+
+function resetSettings(){
+  try { localStorage.removeItem(SETTINGS_KEY); } catch (e) {}
+  if (playing) cancelPlayback();
+  /* the markup's default attributes are the single source of truth */
+  for (const sel of [voiceEl, tuningEl]){
+    for (const o of sel.options) o.selected = o.defaultSelected;
+  }
+  dutyEl.value = dutyEl.defaultValue;
+  volEl.value = volEl.defaultValue;
+  loopEl.checked = loopEl.defaultChecked;
+  dutyVal.textContent = dutyEl.value + "%";
+  if (master) master.gain.value = volEl.value / 100;
+  syncDuty();
+  compile();
+}
+
 /* wiring */
 playEl.addEventListener("click", () => {
   if (!playing) startPlayback();
   else if (!stopping) stopPlayback();      // already stopping: let it finish
 });
 cancelEl.addEventListener("click", cancelPlayback);
-srcEl.addEventListener("input", () => { if (!playing) compile(); });
-tuningEl.addEventListener("change", () => { if (!playing) compile(); });
+srcEl.addEventListener("input", () => { renderHighlight(); if (!playing) compile(); });
+srcEl.addEventListener("scroll", syncScroll);
+tuningEl.addEventListener("change", () => { saveSettings(); refreshStatus(); if (!playing) compile(); });
 voiceEl.addEventListener("change", () => {
+  saveSettings();
+  refreshStatus();
   syncDuty();
   if (playing){ cancelPlayback(); startPlayback(); }
 });
 dutyEl.addEventListener("input", () => {
+  saveSettings();
   dutyVal.textContent = dutyEl.value + "%";
   if (playing && !dutyEl.disabled){ cancelPlayback(); startPlayback(); }
 });
+loopEl.addEventListener("change", saveSettings);
+document.getElementById("reset").addEventListener("click", resetSettings);
 
 /* the duty control only means anything for the pulse-based voices */
 function syncDuty(){
@@ -970,7 +1462,7 @@ function syncDuty(){
   dutyEl.disabled = !usable;
   dutyEl.closest(".knob").style.opacity = usable ? 1 : 0.4;
 }
-volEl.addEventListener("input", () => { if (master) master.gain.value = volEl.value / 100; });
+volEl.addEventListener("input", () => { saveSettings(); if (master) master.gain.value = volEl.value / 100; });
 window.addEventListener("resize", sizeCanvas);
 document.addEventListener("keydown", e => {
   const tag = (e.target.tagName || "").toLowerCase();
@@ -1043,6 +1535,8 @@ function buildVoiceTable(){
 }
 buildVoiceTable();
 
+loadSettings();
+renderHighlight();
 sizeCanvas();
 syncDuty();
 compile();

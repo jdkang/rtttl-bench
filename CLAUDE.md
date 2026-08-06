@@ -21,8 +21,12 @@ Violating any of these silently breaks the point of the project:
    If asked to "modernise" or "refactor into modules", push back first — the
    single-file property is why this can be dropped anywhere and audited in one
    read.
-2. **No browser storage.** No `localStorage`, `sessionStorage`, cookies, or
-   IndexedDB. Nothing about a user's session persists.
+2. **Storage is settings-only.** Exactly one `localStorage` key,
+   `rtttl-bench:settings`, holding the bench control values (voice, duty,
+   volume, tuning, loop) as JSON. No cookies, `sessionStorage`, or IndexedDB;
+   nothing else may be stored, and a visible "Reset settings" control must
+   always exist. Stored values are untrusted input — validate against the
+   controls before applying.
 3. **No telemetry.** No analytics, no beacons, no error reporting services.
 4. **The parser is a port, not a rewrite.** The RTTTL parsing and the `smooth`
    envelope come from `rtttl.coffee` and `player.coffee` in
@@ -61,6 +65,16 @@ Read in this order; the file is organised the same way.
 - **Transport** — `startPlayback`, `stopPlayback` (graceful: current note
   finishes, rest is discarded, pending loop abandoned), `cancelPlayback`
   (immediate, 3 ms ramp to avoid a click), `endPlayback` (UI reset only).
+- **`tokenizeRTTTL(str)`** — the editor's syntax highlighter, a **view layer
+  only**. It returns `{s, e, cls, sev}` spans over the *raw* string. It must
+  never call `parseRTTTL` or change it; to stop the two drifting it reuses the
+  `STRICT`/`LOOSE` patterns and mirrors the parser's per-token normalisation.
+  `parseRTTTL` throws on the first bad note, so the message line names one
+  token while the editor marks them all — that difference is deliberate.
+  `renderHighlight` paints the spans into a `<pre>` stacked under a transparent
+  `<textarea>`; both layers must keep identical font, padding and wrapping or
+  the colours visibly drift off the glyphs. Escape HTML — the input is
+  user-controlled.
 - **`paint` / `tick`** — canvas piano roll, redrawn per frame from the audio
   clock rather than from a timer.
 
@@ -88,9 +102,19 @@ Read in this order; the file is organised the same way.
 - Two-space indent, double quotes in JS, semicolons.
 - Comments explain *why*, especially where a number is a physical claim. Do not
   strip them; they are the reason the file is auditable.
-- Colours come from the CSS custom properties at the top. The visual language is
-  a bench instrument: graphite chassis, grey-green LCD panel, one red accent.
-  Do not introduce a new accent colour without a reason.
+- Type sizes come from the `--fs-*` scale, spacing from `--sp-*`, radii from
+  `--r-*`, all declared at the top of `index.html`. Every font-size in the file
+  is a scale step — keep it that way, since a drift of near-identical sizes is
+  what made the page look unfinished before. Structural dimensions (button
+  heights, panel widths, canvas height) are still plain pixels; that is fine.
+- The palette is **Gruvbox dark**. The visual language is a bench instrument
+  rendered in a developer's terminal theme: warm graphite chassis, green
+  phosphor LCD panel, one red accent. Exactly two colour roles exist —
+  **chassis/UI** and the **syntax token palette** (`--tok-*`), which is used
+  only inside the RTTTL editor. Do not add a hue outside those roles.
+- The piano roll's colours are `--roll-*` custom properties read by
+  `readRollColors()`. Do not hard-code colours in `paint()` again — that is what
+  the cache exists to prevent.
 - Interactive elements need visible `:focus-visible` styles and correct ARIA.
   The tabs are a real tablist with arrow-key navigation; keep it working.
 
