@@ -139,6 +139,7 @@
     background:linear-gradient(180deg,var(--bg2),var(--bg1));
   }
   .mark{
+    margin:0;
     font-family:var(--display);
     font-weight:700;letter-spacing:.16em;text-transform:uppercase;
     font-size:var(--fs-md);color:var(--fg0);
@@ -420,6 +421,7 @@
     font-size:var(--fs-xs);line-height:1.75;color:var(--fg3);
   }
   .tabpanel[hidden]{display:none}
+  .tabpanel:focus-visible{outline:2px solid var(--focus);outline-offset:4px}
   .tabpanel p{margin:0 0 11px}
   .tabpanel p:last-child{margin-bottom:0}
   .tabpanel h3{
@@ -499,14 +501,15 @@
 <body>
 <div class="unit">
 
-  <div class="head">
-    <div class="mark">RTTTL <span>Bench</span></div>
+  <header class="head">
+    <h1 class="mark">RTTTL <span>Bench</span></h1>
     <div class="sub">audition RTTTL before you flash it</div>
     <a class="gh" href="https://github.com/jdkang/rtttl-bench" target="_blank" rel="noopener" aria-label="Source on GitHub">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
-  </div>
+  </header>
 
+  <main>
   <div class="lcd" role="group" aria-label="Readout">
     <div class="lcd-top">
       <div class="now" id="now">—</div>
@@ -583,9 +586,11 @@
     </div>
   </div>
 
-  <section class="notes">
+  </main>
+
+  <section class="notes" aria-labelledby="notesHeading">
     <div class="notes-head">
-      <h2>Service notes</h2>
+      <h2 id="notesHeading">Service notes</h2>
       <span class="hint">how it works, and what's a guess</span>
       <button class="notes-toggle" id="notesToggle" aria-expanded="true" aria-controls="notesBody">Hide</button>
     </div>
@@ -606,7 +611,7 @@
         <span class="tag est">estimated</span>my guess, tune it yourself
       </p>
 
-      <div class="tabpanel" role="tabpanel" id="p-origin" aria-labelledby="tab-origin">
+      <div class="tabpanel" role="tabpanel" tabindex="0" id="p-origin" aria-labelledby="tab-origin">
         <h3>Where this came from</h3>
         <p><span class="tag src">from source</span>The parser and the default envelope are ported from Isaiah Odhner's <a href="https://github.com/1j01/rtttl.js" target="_blank" rel="noopener">1j01/rtttl.js</a> — specifically <code>rtttl.coffee</code> and <code>player.coffee</code>, MIT licensed. Everything else here is new.</p>
         <p>The parser keeps the original's two-tier approach: a strict pattern matching the Nokia spec, then a lenient fallback that accepts odd durations and octaves but raises a warning rather than failing. Spec defaults are <code>d=4</code>, <code>o=6</code>, <code>b=63</code> when the control section leaves them out.</p>
@@ -615,7 +620,7 @@
         <p>The whole tune is written to the Web Audio clock in one pass before playback starts, rather than being driven by timers. Timing is therefore sample-accurate and doesn't drift when the page is busy. The cost is that changing a control mid-song has to stop and reschedule.</p>
       </div>
 
-      <div class="tabpanel" role="tabpanel" id="p-envelope" aria-labelledby="tab-envelope" hidden>
+      <div class="tabpanel" role="tabpanel" tabindex="0" id="p-envelope" aria-labelledby="tab-envelope" hidden>
         <h3>Why a bare oscillator sounds harsh</h3>
         <p>Switching an oscillator on and off at full amplitude produces a step discontinuity in the waveform, and a step contains energy at every frequency. That's the click. It reads as harshness because it happens on every note.</p>
         <p><span class="tag src">from source</span>The <code>sine</code> voice uses the original fix: fade in over 1&nbsp;ms, hold, fade out over the final 40&nbsp;ms, then leave 10&nbsp;ms of silence before the next note. The gap is what separates repeated notes at the same pitch — without it they slur into one long tone.</p>
@@ -634,7 +639,7 @@
         <p>Because the whole tune is written to the audio clock in advance, halting it has two sensible meanings. <strong>Stop</strong> lets the note that's currently sounding play out to its own release, discards everything scheduled after it, and abandons a pending loop — so you hear a musical ending. <strong>Cancel</strong> discards the note in progress too, ramping to silence over 3&nbsp;ms; inaudibly short, but enough to avoid the parting click that a true instant cut would produce.</p>
       </div>
 
-      <div class="tabpanel" role="tabpanel" id="p-tuning" aria-labelledby="tab-tuning" hidden>
+      <div class="tabpanel" role="tabpanel" tabindex="0" id="p-tuning" aria-labelledby="tab-tuning" hidden>
         <h3>The original is nine semitones sharp</h3>
         <p><span class="tag src">from source</span>rtttl.js computes frequency as <code>440 × 2^(octave − 4 + index/12)</code>, where index is 0 for C. That makes <strong>C4 = 440&nbsp;Hz</strong>. Under standard pitch C4 is 261.6&nbsp;Hz and it's A4 that sits at 440.</p>
         <p>Every note is shifted by the same interval, so relative pitch is intact and melodies are recognisable — they just play a major sixth above where they should. This bench defaults to <code>440 × 2^(octave − 4 + (index − 9)/12)</code>, which puts A4 at 440&nbsp;Hz and matches what ESPHome sends to a buzzer.</p>
@@ -643,7 +648,7 @@
         <p>RTTTL octave numbers line up with scientific pitch notation, so <code>o=5</code>, note <code>a</code> is 880&nbsp;Hz. Most tunes in the wild are written for <code>o=5</code> or <code>o=6</code>, which matters a lot once a highpass filter is in the chain — see the Voices tab.</p>
       </div>
 
-      <div class="tabpanel" role="tabpanel" id="p-voices" aria-labelledby="tab-voices" hidden>
+      <div class="tabpanel" role="tabpanel" tabindex="0" id="p-voices" aria-labelledby="tab-voices" hidden>
         <h3>What a voice is</h3>
         <p>One or more oscillators at fixed ratios of the note frequency, a gain envelope, and a fixed filter chain standing in for the physical transducer. The filter chain is where the character lives.</p>
         <p><span class="tag est">estimated</span>Every transducer voice below is a plausible model rather than a measurement of a specific part. The shapes are right; the exact numbers are mine.</p>
@@ -657,7 +662,7 @@
         <p>The pulse voices are built from Fourier coefficients (<code>2/(nπ) · sin(nπd)</code> for 96 harmonics) rather than a naive square, so the browser band-limits them and they don't alias into garbage at high octaves. Duty cycle changes the harmonic balance: 50% cancels all even harmonics, narrower duties get progressively more nasal and quieter.</p>
       </div>
 
-      <div class="tabpanel" role="tabpanel" id="p-apollo" aria-labelledby="tab-apollo" hidden>
+      <div class="tabpanel" role="tabpanel" tabindex="0" id="p-apollo" aria-labelledby="tab-apollo" hidden>
         <h3>What's confirmed</h3>
         <p><span class="tag doc">from docs</span>Apollo Automation devices with a buzzer — BTN-1, MSR-2, MTR-1, TEMP-1, PLT-1, R PRO-1, AIR-1 and the holiday ornaments — all use a passive piezo element, driven by ESPHome's <code>rtttl</code> component on an ESP32 <code>ledc</code> PWM output. Their reference configuration is a plain <code>output: platform: ledc</code> feeding <code>rtttl:</code>. So the signal reaching the element is a hard-gated pulse train, not a shaped tone.</p>
         <h3>What's estimated</h3>
@@ -674,7 +679,7 @@
         <p>If you have one of these on the bench, play a sustained note, find where the peak actually sits, and the 4.2&nbsp;kHz figure is a one-line change in the <code>apollo</code> voice definition.</p>
       </div>
 
-      <div class="tabpanel" role="tabpanel" id="p-limits" aria-labelledby="tab-limits" hidden>
+      <div class="tabpanel" role="tabpanel" tabindex="0" id="p-limits" aria-labelledby="tab-limits" hidden>
         <h3>Known gaps</h3>
         <ul>
           <li><strong>LEDC frequency quantisation.</strong> The ESP32 can only produce frequencies its clock divider and bit resolution allow, so real hardware lands slightly off-pitch, increasingly so at high notes. This bench plays exact frequencies.</li>
@@ -701,9 +706,9 @@
     </span>
   </div>
 
-  <div class="foot">
+  <footer class="foot">
     <code>space</code> starts, and stops at the end of the note that's sounding. <code>esc</code> or Cancel cuts immediately. Nothing leaves the page.
-  </div>
+  </footer>
 
 </div>
 
@@ -1530,23 +1535,31 @@ document.addEventListener("keydown", e => {
 
 const tabs = [...document.querySelectorAll('[role="tab"]')];
 
+/* Roving tabindex: Tab moves into and out of the tablist as one stop, and the
+   arrow keys move between tabs once you are inside. Without this all six tabs
+   sit in the page's tab sequence. */
 function selectTab(tab){
   for (const t of tabs){
     const on = t === tab;
     t.setAttribute("aria-selected", on ? "true" : "false");
+    t.tabIndex = on ? 0 : -1;
     document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
   }
 }
 tabs.forEach((tab, i) => {
   tab.addEventListener("click", () => selectTab(tab));
   tab.addEventListener("keydown", e => {
-    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    if (!step) return;
+    let next = null;
+    if (e.key === "ArrowRight")     next = tabs[(i + 1) % tabs.length];
+    else if (e.key === "ArrowLeft") next = tabs[(i - 1 + tabs.length) % tabs.length];
+    else if (e.key === "Home")      next = tabs[0];
+    else if (e.key === "End")       next = tabs[tabs.length - 1];
+    if (!next) return;
     e.preventDefault();
-    const next = tabs[(i + step + tabs.length) % tabs.length];
     selectTab(next); next.focus();
   });
 });
+selectTab(tabs.find(t => t.getAttribute("aria-selected") === "true") || tabs[0]);
 
 const notesToggle = document.getElementById("notesToggle");
 const notesBody   = document.getElementById("notesBody");
