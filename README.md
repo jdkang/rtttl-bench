@@ -9,7 +9,7 @@ Built because a tune that sounds fine through laptop speakers often sounds
 nothing like that through a 12 mm piezo disc, and the difference is worth
 knowing before you write the automation.
 
-**Live:** _add your `.workers.dev` or custom domain here after the first deploy_
+**Live:**: https://rtttl.jjajan.dev/
 
 ## What it does
 
