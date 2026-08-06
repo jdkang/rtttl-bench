@@ -269,6 +269,69 @@
   .s-warn{text-decoration:underline dotted var(--gb-yellow);text-decoration-thickness:2px;text-underline-offset:3px}
   .s-err{text-decoration:underline wavy var(--gb-red);text-underline-offset:3px}
 
+  .src-head{display:flex;align-items:baseline;gap:var(--sp-3);flex-wrap:wrap}
+  .src-head .field{margin-bottom:0}
+  .helplink{
+    margin-left:auto;background:none;border:0;padding:0;
+    color:var(--gb-aqua);font:400 var(--fs-2xs) var(--mono);
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;
+  }
+  .helplink:hover{color:var(--fg0)}
+  .helplink:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:2px}
+
+  /* ---- format help dialog ---- */
+  dialog{
+    width:min(72ch,calc(100vw - var(--sp-6)));
+    max-height:calc(100vh - var(--sp-6));
+    padding:0 var(--sp-5) var(--sp-5);
+    background:var(--chassis);
+    color:var(--ink);
+    border:1px solid var(--rule);
+    border-radius:var(--r-lg);
+    box-shadow:0 24px 60px rgba(0,0,0,.6);
+  }
+  dialog::backdrop{background:rgba(0,0,0,.62)}
+  .dlg-head{
+    position:sticky;top:0;z-index:1;
+    display:flex;align-items:center;gap:var(--sp-3);
+    padding:var(--sp-4) 0 var(--sp-3);
+    background:var(--chassis);
+    border-bottom:1px solid var(--rule);
+  }
+  .dlg-head h2{
+    margin:0;font-family:var(--display);font-weight:700;
+    font-size:var(--fs-2xs);letter-spacing:.18em;text-transform:uppercase;
+    color:var(--fg0);
+  }
+  .dlg-close{
+    margin-left:auto;background:none;border:1px solid var(--ctl-line);
+    border-radius:var(--r-sm);color:var(--ink-dim);
+    font:400 var(--fs-2xs) var(--mono);
+    min-height:26px;padding:var(--sp-1) 10px;cursor:pointer;
+  }
+  .dlg-close:hover{color:var(--ink);border-color:var(--gray)}
+  .dlg-close:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  dialog p{margin:0 0 11px;font-size:var(--fs-xs);line-height:1.75;color:var(--fg3);max-width:68ch}
+  dialog h3{
+    margin:var(--sp-5) 0 7px;font-family:var(--display);
+    font-size:var(--fs-2xs);letter-spacing:.14em;text-transform:uppercase;
+    font-weight:700;color:var(--fg0);
+  }
+  dialog code{
+    background:var(--bg-hard);color:var(--fg1);border-radius:var(--r-sm);
+    padding:1px 5px;font-size:var(--fs-2xs);
+  }
+  dialog strong{color:var(--fg0);font-weight:600}
+  .anno{
+    margin:0;padding:var(--sp-3);
+    background:var(--bg-hard);border:1px solid var(--rule);border-radius:var(--r-md);
+    font:400 var(--fs-sm)/1.6 var(--mono);
+    color:var(--ink-dim);white-space:pre;
+  }
+  .ex-warn{text-decoration:underline dotted var(--gb-yellow);text-decoration-thickness:2px;text-underline-offset:3px}
+  .ex-err{text-decoration:underline wavy var(--gb-red);text-underline-offset:3px}
+  .dlg-foot{margin-top:var(--sp-5);padding-top:var(--sp-3);border-top:1px solid var(--rule);color:var(--ink-dim)}
+
   .examples{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
   .ex-label{
     font-size:var(--fs-3xs);letter-spacing:.18em;text-transform:uppercase;
@@ -552,7 +615,10 @@
   </div>
 
   <div class="src">
-    <label class="field" for="src">RTTTL string</label>
+    <div class="src-head">
+      <label class="field" for="src">RTTTL string</label>
+      <button type="button" class="helplink" id="formatBtn" aria-haspopup="dialog">What is this format?</button>
+    </div>
     <div class="editor" id="editor">
       <pre class="hl" id="hl" aria-hidden="true"></pre>
       <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">GranVals:d=4,o=5,b=180:8e6,8d6,f#,g#,8c#6,8b,d,e,8b,8a,c#,e,2a</textarea>
@@ -729,6 +795,77 @@
   </footer>
 
 </div>
+
+<dialog id="formatHelp" aria-labelledby="formatTitle">
+  <div class="dlg-head">
+    <h2 id="formatTitle">The RTTTL format</h2>
+    <button type="button" class="dlg-close" id="formatClose" aria-label="Close">esc</button>
+  </div>
+
+  <p>RTTTL (Ring Tone Text Transfer Language) is how Nokia phones stored
+  ringtones in the late nineties. It is still the easiest way to write a tune
+  for a device with one buzzer and no sound files. A whole song is one line of
+  text, in <strong>three sections separated by colons</strong>.</p>
+
+  <div class="scroller">
+    <pre class="anno"><span class="t-name">GranVals</span><span class="t-colon">:</span><span class="t-key">d</span><span class="t-eq">=</span><span class="t-val">4</span><span class="t-sep">,</span><span class="t-key">o</span><span class="t-eq">=</span><span class="t-val">5</span><span class="t-sep">,</span><span class="t-key">b</span><span class="t-eq">=</span><span class="t-val">180</span><span class="t-colon">:</span><span class="t-dur">8</span><span class="t-note">e</span><span class="t-oct">6</span><span class="t-sep">,</span><span class="t-dur">8</span><span class="t-note">d</span><span class="t-oct">6</span><span class="t-sep">,</span><span class="t-note">f</span><span class="t-sharp">#</span><span class="t-sep">,</span><span class="t-note">g</span><span class="t-sharp">#</span>
+└─name─┘ └─defaults──┘ └───notes───┘</pre>
+  </div>
+
+  <p>The colours above are the same ones the editor uses, so once you know them
+  you can read a tune at a glance.</p>
+
+  <h3>1. Name</h3>
+  <p>Anything you like. It is shown on the readout and otherwise ignored.</p>
+
+  <h3>2. Defaults</h3>
+  <p>Values that apply to every note that does not override them. All three are
+  optional — leave the section empty and the spec defaults
+  (<code>d=4</code>, <code>o=6</code>, <code>b=63</code>) apply.</p>
+  <div class="scroller">
+    <table class="spec">
+      <thead><tr><th>Key</th><th>Means</th><th>Values</th></tr></thead>
+      <tbody>
+        <tr><td><code>d</code></td><td>default note length</td><td>1, 2, 4, 8, 16, 32 — a whole note, a half, a quarter, and so on</td></tr>
+        <tr><td><code>o</code></td><td>default octave</td><td>4 to 7. Octave 5 starts at middle C</td></tr>
+        <tr><td><code>b</code></td><td>tempo in beats per minute</td><td>typically 63 to 200; higher is faster</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3. Notes</h3>
+  <p>A comma-separated list. Each note is written
+  <code>[length][pitch][#][octave][.]</code>, and every part except the pitch is
+  optional — leave a part out and the default from section 2 is used.</p>
+  <div class="scroller">
+    <table class="spec">
+      <thead><tr><th>Part</th><th>Means</th></tr></thead>
+      <tbody>
+        <tr><td><code>8</code></td><td>length, just for this note. <code>8e</code> is an eighth-note E</td></tr>
+        <tr><td><code>e</code></td><td>the pitch, <code>a</code> to <code>g</code>. <code>p</code> is a rest — a silence</td></tr>
+        <tr><td><code>#</code></td><td>sharp, raising the pitch a semitone. <code>f#</code></td></tr>
+        <tr><td><code>6</code></td><td>octave, just for this note. <code>e6</code> is an octave above <code>e5</code></td></tr>
+        <tr><td><code>.</code></td><td>a dot, making the note half again as long. <code>c.</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Reading a note</h3>
+  <p><code>8e6</code> is an eighth-note E in octave 6. <code>f#</code> is an
+  F sharp using the default length and octave. <code>2a</code> is a half-note A,
+  twice as long as a quarter. <code>32p</code> is a very short rest.</p>
+
+  <h3>If something is wrong</h3>
+  <p>The editor marks it as you type. A <span class="ex-warn">dotted underline</span>
+  means the tune still plays but something is off-spec — an unusual note length,
+  say — and the message line explains what. A
+  <span class="ex-err">wavy underline</span> means that token cannot be read at
+  all and nothing will play until it is fixed.</p>
+
+  <p class="dlg-foot">Press <code>esc</code> or click outside to close. The
+  <strong>Service notes</strong> below the controls cover how the sound itself
+  is produced.</p>
+</dialog>
 
 <script>
 "use strict";
@@ -1567,6 +1704,9 @@ function syncDuty(){
 volEl.addEventListener("input", () => { saveSettings(); syncVol(); applyVolume(); });
 window.addEventListener("resize", sizeCanvas);
 document.addEventListener("keydown", e => {
+  // while the format dialog is up, esc belongs to it and space belongs to the
+  // page's own scrolling — neither should reach the transport
+  if (formatDlg.open) return;
   const tag = (e.target.tagName || "").toLowerCase();
   const inControl = ["textarea","input","select","button","a"].includes(tag);
   if (e.code === "Escape" && playing){
@@ -1608,6 +1748,24 @@ tabs.forEach((tab, i) => {
   });
 });
 selectTab(tabs.find(t => t.getAttribute("aria-selected") === "true") || tabs[0]);
+
+/* Format primer. <dialog>.showModal() gives focus trapping, esc-to-close and a
+   backdrop for free, which is why this is a dialog rather than a hand-rolled
+   panel or a second page — the single-file property stays intact. */
+const formatDlg   = document.getElementById("formatHelp");
+const formatBtn   = document.getElementById("formatBtn");
+formatBtn.addEventListener("click", () => formatDlg.showModal());
+document.getElementById("formatClose").addEventListener("click", () => formatDlg.close());
+/* clicking the backdrop closes it: the dialog itself fills the whole top layer,
+   so a click landing outside its box is a click on the backdrop */
+formatDlg.addEventListener("click", e => {
+  if (e.target !== formatDlg) return;
+  const r = formatDlg.getBoundingClientRect();
+  const outside = e.clientX < r.left || e.clientX > r.right ||
+                  e.clientY < r.top  || e.clientY > r.bottom;
+  if (outside) formatDlg.close();
+});
+formatDlg.addEventListener("close", () => formatBtn.focus());
 
 const notesToggle = document.getElementById("notesToggle");
 const notesBody   = document.getElementById("notesBody");
