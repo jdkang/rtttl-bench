@@ -213,6 +213,7 @@
     resize:vertical;
     transition:border-color .12s ease, box-shadow .12s ease;
   }
+  .editor[data-state=""]{--state:var(--bg3)}
   .editor[data-state="ok"]{--state:var(--gb-green-lo)}
   .editor[data-state="warn"]{--state:var(--gb-yellow)}
   .editor[data-state="err"]{--state:var(--gb-red)}
@@ -361,17 +362,21 @@
   input[type=range]:disabled::-webkit-slider-thumb{background:var(--bg4)}
   input[type=range]:disabled::-moz-range-thumb{background:var(--bg4)}
 
-  .check{display:flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-xs);color:var(--ink);cursor:pointer}
+  .check{
+    display:flex;align-items:center;gap:var(--sp-2);
+    min-height:24px;padding:var(--sp-1) 0;
+    font-size:var(--fs-xs);color:var(--ink);cursor:pointer;
+  }
   input[type=checkbox]{
     appearance:none;-webkit-appearance:none;
-    width:16px;height:16px;margin:0;cursor:pointer;
+    width:20px;height:20px;margin:0;cursor:pointer;flex:none;
     border:1px solid var(--ctl-line);border-radius:var(--r-sm);
     background:var(--bg1);
     display:grid;place-content:center;
     transition:background .12s ease, border-color .12s ease;
   }
   input[type=checkbox]::after{
-    content:"";width:9px;height:5px;
+    content:"";width:11px;height:6px;
     border-left:2px solid var(--lcd-ink);border-bottom:2px solid var(--lcd-ink);
     transform:rotate(-45deg) translate(1px,-1px);
     opacity:0;
@@ -382,7 +387,7 @@
   .reset{
     margin-left:auto;background:none;border:1px solid var(--ctl-line);border-radius:var(--r-sm);
     color:var(--ink-dim);font:400 var(--fs-2xs) var(--mono);
-    padding:var(--sp-1) 10px;cursor:pointer;
+    min-height:26px;padding:var(--sp-1) 10px;cursor:pointer;
     transition:color .12s ease, border-color .12s ease;
   }
   .reset:hover{color:var(--ink);border-color:var(--gray)}
@@ -399,7 +404,7 @@
   .notes-toggle{
     margin-left:auto;background:none;border:1px solid var(--rule);border-radius:var(--r-sm);
     color:var(--ink-dim);font:400 var(--fs-2xs) var(--mono);
-    padding:var(--sp-1) 10px;cursor:pointer;
+    min-height:26px;padding:var(--sp-1) 10px;cursor:pointer;
     transition:color .12s ease, border-color .12s ease;
   }
   .notes-toggle:hover{color:var(--ink);border-color:var(--bg4)}
@@ -538,13 +543,15 @@
     <div class="msg ok" id="msg">Paste a tune and press play.</div>
     <div class="sr-only" role="status" id="announce"></div>
     <span class="sr-only" id="dutyNote">Duty cycle only affects the pulse and PWM voices.</span>
+    <span class="sr-only" id="cancelNote">Cuts playback immediately, without letting the current note finish.</span>
+    <span class="sr-only" id="resetNote">Restores every control to its default and forgets the saved settings.</span>
   </div>
 
   <div class="panel-wrap">
     <span class="field">Controls</span>
     <div class="panel">
       <button class="transport" id="play">Play</button>
-      <button class="cancel" id="cancel" disabled title="Cut playback immediately">Cancel</button>
+      <button class="cancel" id="cancel" disabled title="Cut playback immediately" aria-describedby="cancelNote">Cancel</button>
       <div class="knobs">
         <label class="knob"><span>Voice</span>
           <select id="voice">
@@ -571,7 +578,7 @@
         <label class="knob"><span>PWM duty <b id="dutyVal">60%</b></span>
           <input type="range" id="duty" min="5" max="95" step="5" value="60" aria-describedby="dutyNote">
         </label>
-        <label class="knob"><span>Volume</span>
+        <label class="knob"><span>Volume <b id="volVal">33%</b></span>
           <input type="range" id="vol" min="0" max="30" value="10">
         </label>
         <label class="knob"><span>Tuning</span>
@@ -582,7 +589,7 @@
         </label>
         <label class="check"><input type="checkbox" id="loop"> Loop</label>
       </div>
-      <button class="reset" id="reset" title="Restore defaults and forget saved settings">Reset settings</button>
+      <button class="reset" id="reset" title="Restore defaults and forget saved settings" aria-describedby="resetNote">Reset settings</button>
     </div>
   </div>
 
@@ -1066,6 +1073,7 @@ const voiceEl  = document.getElementById("voice");
 const volEl    = document.getElementById("vol");
 const dutyEl   = document.getElementById("duty");
 const dutyVal  = document.getElementById("dutyVal");
+const volVal   = document.getElementById("volVal");
 const tuningEl = document.getElementById("tuning");
 const loopEl   = document.getElementById("loop");
 const nowEl    = document.getElementById("now");
@@ -1236,6 +1244,12 @@ function refreshStatus(){
 /* The message line is updated on every keystroke, so making it a live region
    directly would announce constantly while you type. Instead it stays purely
    visual and a separate off-screen region repeats it once typing settles. */
+/* the slider is 0..30 because that maps to a sane gain range; showing the raw
+   number would be meaningless, so it reads as a position in that range */
+function syncVol(){
+  volVal.textContent = Math.round(volEl.value / volEl.max * 100) + "%";
+}
+
 let announceTimer = 0;
 function announce(text){
   clearTimeout(announceTimer);
@@ -1266,6 +1280,23 @@ function describeRoll(song){
    typing, or they end up contradicting the squiggles the highlighter has
    already drawn. So a preview pass updates the report and nothing else. */
 function compile(apply = true){
+  /* An empty box is the normal state after clearing, not a parse failure.
+     Answer it before the parser gets a chance to say "found 1 section". */
+  if (!srcEl.value.trim()){
+    msgEl.className = "msg ok";
+    msgEl.textContent = "Paste an RTTTL string.";
+    editorEl.dataset.state = "";
+    announce("");
+    if (!apply) return null;
+    current = null;
+    nameEl.textContent = "no tune loaded";
+    ["mO","mD","mB","mN"].forEach(id => document.getElementById(id).textContent = "—");
+    totalEl.textContent = fmt(0);
+    canvas.setAttribute("aria-label", describeRoll(null));
+    refreshStatus();
+    paint(-1);
+    return null;
+  }
   try{
     const song = parseRTTTL(srcEl.value, tuningEl.value);
     if (song.warnings.length){
@@ -1466,6 +1497,7 @@ function loadSettings(){
   clamp(volEl, s.vol);
   loopEl.checked = s.loop === true;
   dutyVal.textContent = dutyEl.value + "%";
+  syncVol();
 }
 
 function resetSettings(){
@@ -1479,6 +1511,7 @@ function resetSettings(){
   volEl.value = volEl.defaultValue;
   loopEl.checked = loopEl.defaultChecked;
   dutyVal.textContent = dutyEl.value + "%";
+  syncVol();
   if (master) master.gain.value = volEl.value / 100;
   syncDuty();
   compile();
@@ -1516,7 +1549,7 @@ function syncDuty(){
   /* say why it is dead rather than just greying it out */
   dutyVal.textContent = usable ? dutyEl.value + "%" : "n/a";
 }
-volEl.addEventListener("input", () => { saveSettings(); if (master) master.gain.value = volEl.value / 100; });
+volEl.addEventListener("input", () => { saveSettings(); syncVol(); if (master) master.gain.value = volEl.value / 100; });
 window.addEventListener("resize", sizeCanvas);
 document.addEventListener("keydown", e => {
   const tag = (e.target.tagName || "").toLowerCase();
@@ -1598,6 +1631,7 @@ function buildVoiceTable(){
 buildVoiceTable();
 
 loadSettings();
+syncVol();
 renderHighlight();
 sizeCanvas();
 syncDuty();
