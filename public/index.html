@@ -25,7 +25,6 @@
     --fg3:#bdae93;
     --gray:#a89984;
     --gb-red:#fb4934;
-    --gb-red-lo:#cc241d;
     /* lightened red for error *text*: plain --gb-red only reaches 4.29:1 on the
        chassis, under the 4.5:1 AA floor. --gb-red stays for borders and LEDs,
        where the 3:1 non-text threshold applies. */
@@ -43,7 +42,6 @@
     --rule:var(--bg3);
     --ink:var(--fg1);
     --ink-dim:var(--gray);
-    --red-lo:var(--gb-red-lo);
     --focus:var(--gb-blue);
 
     /* LCD phosphor, retuned into the gruvbox green-yellow family */
@@ -132,18 +130,6 @@
     border-bottom:1px solid var(--rule);
     background:linear-gradient(180deg,var(--bg2),var(--bg1));
   }
-  /* status LEDs: power, playing, parse error. Decorative reinforcement only —
-     the status bar and message line carry the same state as text. */
-  .leds{display:flex;gap:6px;align-items:center;margin-right:var(--sp-1)}
-  .led{
-    width:9px;height:9px;border-radius:50%;
-    background:var(--bg4);
-    box-shadow:0 0 0 1px rgba(0,0,0,.4) inset;
-    transition:background .15s ease, box-shadow .15s ease;
-  }
-  .led.on[data-led="pwr"]{background:var(--gb-green);box-shadow:0 0 6px rgba(184,187,38,.55)}
-  .led.on[data-led="play"]{background:var(--gb-yellow);box-shadow:0 0 6px rgba(250,189,47,.55)}
-  .led.on[data-led="err"]{background:var(--gb-red);box-shadow:0 0 6px rgba(251,73,52,.55)}
   .mark{
     font-family:var(--display);
     font-weight:700;letter-spacing:.16em;text-transform:uppercase;
@@ -281,37 +267,37 @@
     margin:var(--sp-3) var(--sp-4) var(--sp-4);padding-top:var(--sp-4);
     border-top:1px solid var(--rule);
   }
+  /* Filled primary, outlined secondary. No gradients, no offset shadow faking
+     a raised key, no press translate — those read as a decade-old idiom next
+     to the flat terminal UI everywhere else. The buttons use the mono face
+     rather than the display one for the same reason. */
   .transport{
-    appearance:none;border:0;cursor:pointer;
-    width:120px;height:52px;border-radius:var(--r-md);
-    font-family:var(--display);
-    font-weight:700;font-size:var(--fs-md);letter-spacing:.14em;text-transform:uppercase;
-    background:linear-gradient(180deg,var(--lcd-hi),var(--lcd-lo));
-    color:var(--lcd-ink);
-    box-shadow:0 3px 0 #5c6533, 0 6px 12px rgba(0,0,0,.45);
-    transition:transform .06s ease, box-shadow .06s ease;
+    appearance:none;cursor:pointer;
+    min-width:120px;height:44px;padding:0 var(--sp-5);
+    border:1px solid var(--lcd);border-radius:var(--r-md);
+    background:var(--lcd);color:var(--lcd-ink);
+    font:700 var(--fs-sm)/1 var(--mono);
+    letter-spacing:.12em;text-transform:uppercase;
+    transition:background .12s ease, border-color .12s ease;
   }
-  .transport:active{transform:translateY(3px);box-shadow:0 0 0 #5c6533,0 2px 6px rgba(0,0,0,.5)}
-  .transport.on{
-    background:linear-gradient(180deg,#fe8019,var(--gb-red));
-    color:#2a0a05;box-shadow:0 3px 0 var(--red-lo),0 6px 16px rgba(251,73,52,.28);
-  }
-  .transport:focus-visible{outline:2px solid var(--fg0);outline-offset:3px}
+  .transport:hover{background:var(--lcd-hi);border-color:var(--lcd-hi)}
+  .transport:active{background:var(--lcd-lo);border-color:var(--lcd-lo)}
+  .transport.on{background:var(--gb-red);border-color:var(--gb-red);color:var(--bg-hard)}
+  .transport.on:hover{background:var(--gb-red-hi);border-color:var(--gb-red-hi)}
+  .transport:focus-visible{outline:2px solid var(--fg0);outline-offset:2px}
 
   .cancel{
     appearance:none;cursor:pointer;
-    height:52px;padding:0 22px;border-radius:var(--r-md);
-    background:linear-gradient(180deg,var(--bg2),var(--bg1));
-    border:1px solid var(--bg3);color:var(--fg3);
-    font-family:var(--display);
-    font-weight:700;font-size:var(--fs-sm);letter-spacing:.14em;text-transform:uppercase;
-    box-shadow:0 3px 0 var(--bg-hard), 0 6px 12px rgba(0,0,0,.4);
-    transition:transform .06s ease, box-shadow .06s ease, color .12s ease;
+    height:44px;padding:0 var(--sp-4);
+    border:1px solid var(--rule);border-radius:var(--r-md);
+    background:transparent;color:var(--fg3);
+    font:700 var(--fs-sm)/1 var(--mono);
+    letter-spacing:.12em;text-transform:uppercase;
+    transition:color .12s ease, border-color .12s ease;
   }
   .cancel:not(:disabled):hover{color:var(--gb-orange);border-color:var(--gb-orange)}
-  .cancel:not(:disabled):active{transform:translateY(3px);box-shadow:0 0 0 var(--bg-hard),0 2px 6px rgba(0,0,0,.5)}
-  .cancel:disabled{opacity:.32;cursor:default}
-  .cancel:focus-visible{outline:2px solid var(--fg0);outline-offset:3px}
+  .cancel:disabled{opacity:.4;cursor:default}
+  .cancel:focus-visible{outline:2px solid var(--fg0);outline-offset:2px}
 
   .knobs{display:flex;gap:var(--sp-4);flex-wrap:wrap;align-items:center}
   .knob{display:flex;flex-direction:column;gap:var(--sp-1)}
@@ -453,15 +439,6 @@
     font-size:var(--fs-2xs);letter-spacing:.04em;
     color:var(--ink-dim);
   }
-  .st-state{
-    display:inline-flex;align-items:center;gap:6px;
-    font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--lcd-ink);background:var(--lcd);
-    padding:2px var(--sp-2);border-radius:var(--r-sm);
-  }
-  .statusbar[data-state="playing"] .st-state{background:var(--gb-yellow)}
-  .statusbar[data-state="stopping"] .st-state{background:var(--gb-orange)}
-  .statusbar[data-state="error"] .st-state{background:var(--gb-red);color:var(--bg-hard)}
   .st-item b{color:var(--fg3);font-weight:600}
   .st-right{margin-left:auto;display:flex;gap:var(--sp-3);flex-wrap:wrap}
   .st-right code{
@@ -485,7 +462,7 @@
     .st-right{margin-left:0}
   }
   @media (prefers-reduced-motion:reduce){
-    .transport,.cancel,.led,.editor,.reset,.notes-toggle,
+    .transport,.cancel,.editor,.reset,.notes-toggle,
     .tabs button,select,input[type=checkbox]{transition:none}
   }
 </style>
@@ -494,11 +471,6 @@
 <div class="unit">
 
   <div class="head">
-    <div class="leds" aria-hidden="true">
-      <span class="led on" data-led="pwr" id="ledPwr"></span>
-      <span class="led" data-led="play" id="ledPlay"></span>
-      <span class="led" data-led="err" id="ledErr"></span>
-    </div>
     <div class="mark">RTTTL <span>Bench</span></div>
     <div class="sub">monophonic tone generator &middot; web audio</div>
     <a class="gh" href="https://github.com/jdkang/rtttl-bench" target="_blank" rel="noopener" aria-label="Source on GitHub">
@@ -685,8 +657,7 @@
     </div>
   </section>
 
-  <div class="statusbar" id="statusbar" data-state="ready">
-    <span class="st-state" id="stState">ready</span>
+  <div class="statusbar" id="statusbar">
     <span class="st-item">voice <b id="stVoice">sine</b></span>
     <span class="st-item">tuning <b id="stTuning">A4=440</b></span>
     <span class="st-item" id="stWarnWrap" hidden><b id="stWarn">0</b> warnings</span>
@@ -981,7 +952,6 @@ function startPlayback(){
   playEl.textContent = "Stop";
   playEl.classList.add("on");
   cancelEl.disabled = false;
-  refreshStatus();
   requestAnimationFrame(tick);
 }
 
@@ -1019,7 +989,6 @@ function stopPlayback(){
   endsAt = noteEnd;
   stopping = true;
   playEl.textContent = "Stopping";
-  refreshStatus();
 }
 
 /* Cancel: cut it now. The 3 ms ramp is inaudible but avoids a parting click. */
@@ -1037,7 +1006,6 @@ function endPlayback(){
   paint(-1);
   setNow(null);
   clockEl.textContent = fmt(0);
-  refreshStatus();
 }
 
 /* ------------------------------------------------------------------ ui */
@@ -1061,14 +1029,10 @@ const canvas   = document.getElementById("roll");
 const cx       = canvas.getContext("2d");
 const hlEl     = document.getElementById("hl");
 const editorEl = document.getElementById("editor");
-const barEl    = document.getElementById("statusbar");
-const stState  = document.getElementById("stState");
 const stVoice  = document.getElementById("stVoice");
 const stTuning = document.getElementById("stTuning");
 const stWarn   = document.getElementById("stWarn");
 const stWarnWrap = document.getElementById("stWarnWrap");
-const ledPlay  = document.getElementById("ledPlay");
-const ledErr   = document.getElementById("ledErr");
 
 let current = null;   // last successfully parsed song
 
@@ -1209,13 +1173,10 @@ function syncScroll(){
   hlEl.scrollLeft = srcEl.scrollLeft;
 }
 
-/* the status bar and the title-bar LEDs both report state derived here */
+/* The status bar carries only what isn't already visible elsewhere. Transport
+   state is on the Play button's own label and parse errors are on the message
+   line and the editor rail, so neither is repeated here. */
 function refreshStatus(){
-  const state = !current ? "error" : stopping ? "stopping" : playing ? "playing" : "ready";
-  barEl.dataset.state = state;
-  stState.textContent = state;
-  ledPlay.classList.toggle("on", playing);
-  ledErr.classList.toggle("on", !current);
   stVoice.textContent  = voiceEl.value;
   stTuning.textContent = tuningEl.value === "demo" ? "rtttl.js demo" : "A4=440";
   const w = current ? current.warnings.length : 0;

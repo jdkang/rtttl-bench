@@ -107,11 +107,24 @@ Read in this order; the file is organised the same way.
   is a scale step — keep it that way, since a drift of near-identical sizes is
   what made the page look unfinished before. Structural dimensions (button
   heights, panel widths, canvas height) are still plain pixels; that is fine.
-- The palette is **Gruvbox dark**. The visual language is a bench instrument
-  rendered in a developer's terminal theme: warm graphite chassis, green
-  phosphor LCD panel, one red accent. Exactly two colour roles exist —
+- The palette is **Gruvbox dark**. Exactly two colour roles exist —
   **chassis/UI** and the **syntax token palette** (`--tok-*`), which is used
   only inside the RTTTL editor. Do not add a hue outside those roles.
+- **Flat terminal UI is the default.** The project is not committed to a
+  skeuomorphic "bench instrument" look, and earlier versions of this file said
+  otherwise — do not restore that. Physical-object styling is allowed in
+  exactly one place, the LCD panel, because the piano roll genuinely lives in
+  it and the metaphor does work there. Everywhere else, avoid gradients,
+  offset shadows faking raised keys, and press-translate animations; they date
+  the page badly. Buttons are a filled primary and an outlined secondary in
+  the mono face.
+- **Chrome must not imply meaning it doesn't have.** A previous revision had
+  three coloured dots in the title bar, intended as status LEDs. They read as
+  macOS traffic lights, were `aria-hidden`, and only ever duplicated state
+  already shown in words — so they were removed. Do not add ornament that
+  looks like instrumentation. The status bar shows only what is *not* visible
+  elsewhere: transport state lives on the Play button's label, parse errors on
+  the message line and the editor rail.
 - The piano roll's colours are `--roll-*` custom properties read by
   `readRollColors()`. Do not hard-code colours in `paint()` again — that is what
   the cache exists to prevent.
