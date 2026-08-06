@@ -23,7 +23,8 @@ Violating any of these silently breaks the point of the project:
    read.
 2. **Storage is settings-only.** Exactly one `localStorage` key,
    `rtttl-bench:settings`, holding the bench control values (voice, duty,
-   volume, tuning, loop) as JSON. No cookies, `sessionStorage`, or IndexedDB;
+   volume, tuning, loop) plus whether the Service notes panel is open
+   (`notes`), as JSON. No cookies, `sessionStorage`, or IndexedDB;
    nothing else may be stored, and a visible "Reset settings" control must
    always exist. Stored values are untrusted input — validate against the
    controls before applying.

@@ -466,23 +466,6 @@
   .spec td:first-child{color:var(--fg0);white-space:nowrap}
   .spec tr:last-child td{border-bottom:0}
 
-  /* ---- status bar ---- */
-  .statusbar{
-    display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;
-    margin-top:var(--sp-4);
-    padding:7px var(--sp-4);
-    border-top:1px solid var(--rule);
-    background:var(--bg1);
-    font-size:var(--fs-2xs);letter-spacing:.04em;
-    color:var(--ink-dim);
-  }
-  .st-item b{color:var(--fg3);font-weight:600}
-  .st-right{margin-left:auto;display:flex;gap:var(--sp-3);flex-wrap:wrap}
-  .st-right code{
-    background:var(--bg-hard);color:var(--fg3);border-radius:var(--r-sm);
-    padding:1px 5px;font-size:var(--fs-3xs);
-  }
-
   .foot{
     padding:var(--sp-3) var(--sp-4) var(--sp-4);
     font-size:var(--fs-2xs);line-height:1.6;color:var(--ink-dim);
@@ -496,7 +479,6 @@
     .now{font-size:var(--fs-lg)}
     .title{max-width:100%;}
     .transport,.cancel{width:100%}
-    .st-right{margin-left:0}
   }
   /* Windows High Contrast replaces the palette wholesale. Anything conveyed by
      a background or a custom colour has to be re-expressed with a border or a
@@ -620,10 +602,10 @@
     <div class="notes-head">
       <h2 id="notesHeading">Service notes</h2>
       <span class="hint">how it works, and what's a guess</span>
-      <button class="notes-toggle" id="notesToggle" aria-expanded="true" aria-controls="notesBody">Hide</button>
+      <button class="notes-toggle" id="notesToggle" aria-expanded="false" aria-controls="notesBody">Show</button>
     </div>
 
-    <div id="notesBody">
+    <div id="notesBody" hidden>
       <div class="tabs" role="tablist" aria-label="Service notes sections">
         <button role="tab" id="tab-origin"   aria-controls="p-origin"   aria-selected="true">Origin</button>
         <button role="tab" id="tab-envelope" aria-controls="p-envelope" aria-selected="false">Envelope</button>
@@ -723,16 +705,6 @@
       </div>
     </div>
   </section>
-
-  <div class="statusbar" id="statusbar">
-    <span class="st-item">voice <b id="stVoice">sine</b></span>
-    <span class="st-item">tuning <b id="stTuning">A4=440</b></span>
-    <span class="st-item" id="stWarnWrap" hidden><b id="stWarn">0</b> warnings</span>
-    <span class="st-right">
-      <span><code>space</code> play</span>
-      <span><code>esc</code> cut</span>
-    </span>
-  </div>
 
   <footer class="foot">
     <code>space</code> starts, and stops at the end of the note that's sounding. <code>esc</code> or Cancel cuts immediately. Nothing leaves the page.
@@ -1106,10 +1078,6 @@ const canvas   = document.getElementById("roll");
 const cx       = canvas.getContext("2d");
 const hlEl     = document.getElementById("hl");
 const editorEl = document.getElementById("editor");
-const stVoice  = document.getElementById("stVoice");
-const stTuning = document.getElementById("stTuning");
-const stWarn   = document.getElementById("stWarn");
-const stWarnWrap = document.getElementById("stWarnWrap");
 const announceEl = document.getElementById("announce");
 
 let current = null;   // last successfully parsed song
@@ -1251,20 +1219,6 @@ function syncScroll(){
   hlEl.scrollLeft = srcEl.scrollLeft;
 }
 
-/* The status bar carries only what isn't already visible elsewhere. Transport
-   state is on the Play button's own label and parse errors are on the message
-   line and the editor rail, so neither is repeated here. */
-function refreshStatus(){
-  stVoice.textContent  = voiceEl.value;
-  stTuning.textContent = tuningEl.value === "demo" ? "rtttl.js demo" : "A4=440";
-  const w = current ? current.warnings.length : 0;
-  stWarn.textContent = w;
-  stWarnWrap.hidden = w === 0;
-}
-
-/* The message line is updated on every keystroke, so making it a live region
-   directly would announce constantly while you type. Instead it stays purely
-   visual and a separate off-screen region repeats it once typing settles. */
 /* the slider is 0..30 because that maps to a sane gain range; showing the raw
    number would be meaningless, so it reads as a position in that range */
 function syncVol(){
@@ -1314,7 +1268,6 @@ function compile(apply = true){
     ["mO","mD","mB","mN"].forEach(id => document.getElementById(id).textContent = "—");
     totalEl.textContent = fmt(0);
     canvas.setAttribute("aria-label", describeRoll(null));
-    refreshStatus();
     paint(-1);
     return null;
   }
@@ -1341,7 +1294,6 @@ function compile(apply = true){
     document.getElementById("mB").textContent = song.b;
     document.getElementById("mN").textContent = song.notes.length;
     totalEl.textContent = fmt(song.total);
-    refreshStatus();
     paint(-1);
     return song;
   }catch(err){
@@ -1357,7 +1309,6 @@ function compile(apply = true){
     nameEl.textContent = "no tune loaded";
     ["mO","mD","mB","mN"].forEach(id => document.getElementById(id).textContent = "—");
     totalEl.textContent = fmt(0);
-    refreshStatus();
     paint(-1);
     return null;
   }
@@ -1499,6 +1450,7 @@ function saveSettings(){
     vol: Number(volEl.value),
     tuning: tuningEl.value,
     loop: loopEl.checked,
+    notes: !notesBody.hidden,
   };
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
 }
@@ -1517,6 +1469,7 @@ function loadSettings(){
   clamp(dutyEl, s.duty);
   clamp(volEl, s.vol);
   loopEl.checked = s.loop === true;
+  setNotesOpen(s.notes === true);
   dutyVal.textContent = dutyEl.value + "%";
   syncVol();
 }
@@ -1531,6 +1484,7 @@ function resetSettings(){
   dutyEl.value = dutyEl.defaultValue;
   volEl.value = volEl.defaultValue;
   loopEl.checked = loopEl.defaultChecked;
+  setNotesOpen(false);          // matches the markup default
   dutyVal.textContent = dutyEl.value + "%";
   syncVol();
   if (master) master.gain.value = volEl.value / 100;
@@ -1546,10 +1500,9 @@ playEl.addEventListener("click", () => {
 cancelEl.addEventListener("click", cancelPlayback);
 srcEl.addEventListener("input", () => { renderHighlight(); compile(!playing); });
 srcEl.addEventListener("scroll", syncScroll);
-tuningEl.addEventListener("change", () => { saveSettings(); refreshStatus(); if (!playing) compile(); });
+tuningEl.addEventListener("change", () => { saveSettings(); compile(!playing); });
 voiceEl.addEventListener("change", () => {
   saveSettings();
-  refreshStatus();
   syncDuty();
   if (playing){ cancelPlayback(); startPlayback(); }
 });
@@ -1617,11 +1570,18 @@ selectTab(tabs.find(t => t.getAttribute("aria-selected") === "true") || tabs[0])
 
 const notesToggle = document.getElementById("notesToggle");
 const notesBody   = document.getElementById("notesBody");
-notesToggle.addEventListener("click", () => {
-  const open = notesBody.hidden;
+
+/* hidden, aria-expanded and the button label have to move together; keeping
+   that in one place is why the click handler, loadSettings and resetSettings
+   all route through here */
+function setNotesOpen(open){
   notesBody.hidden = !open;
   notesToggle.setAttribute("aria-expanded", open ? "true" : "false");
   notesToggle.textContent = open ? "Hide" : "Show";
+}
+notesToggle.addEventListener("click", () => {
+  setNotesOpen(notesBody.hidden);
+  saveSettings();
 });
 
 /* the voice table is generated from the definitions, so it can't drift */
