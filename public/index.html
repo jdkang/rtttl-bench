@@ -118,7 +118,7 @@
     display:flex;
     align-items:flex-start;
     justify-content:center;
-    padding:var(--sp-5) var(--sp-4) var(--sp-6);
+    padding:var(--sp-5) var(--sp-4);
   }
 
   .unit{
@@ -269,6 +269,20 @@
   .s-warn{text-decoration:underline dotted var(--gb-yellow);text-decoration-thickness:2px;text-underline-offset:3px}
   .s-err{text-decoration:underline wavy var(--gb-red);text-underline-offset:3px}
 
+  .examples{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
+  .ex-label{
+    font-size:var(--fs-3xs);letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .ex-buttons{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+  .ex{
+    background:none;border:1px solid var(--ctl-line);border-radius:var(--r-sm);
+    color:var(--ink-dim);font:400 var(--fs-2xs) var(--mono);
+    min-height:26px;padding:var(--sp-1) 10px;cursor:pointer;
+    transition:color .12s ease, border-color .12s ease;
+  }
+  .ex:hover{color:var(--ink);border-color:var(--gray)}
+  .ex:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
   .msg{min-height:19px;margin-top:7px;font-size:var(--fs-xs);line-height:1.5}
   /* one-shot flash when Play is pressed on a tune that won't parse */
   @keyframes nudge{
@@ -542,6 +556,10 @@
     <div class="editor" id="editor">
       <pre class="hl" id="hl" aria-hidden="true"></pre>
       <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">Scale:d=32,o=5,b=160:c,d,e,f,g,a,b,c6,b,a,g,f,e,d,c</textarea>
+    </div>
+    <div class="examples">
+      <span class="ex-label" id="exLabel">load</span>
+      <span class="ex-buttons" role="group" aria-labelledby="exLabel"></span>
     </div>
     <div class="msg ok" id="msg">Paste a tune and press play.</div>
     <div class="sr-only" role="status" id="announce"></div>
@@ -1583,6 +1601,43 @@ notesToggle.addEventListener("click", () => {
   setNotesOpen(notesBody.hidden);
   saveSettings();
 });
+
+/* Example tunes. Each one is here to demonstrate something different, and the
+   buttons are generated from this list so the markup can't drift from it.
+
+   The melodies are public domain — Tárrega's Gran Vals (1902) and Beethoven's
+   Ode to Joy. Do not add Star Wars, Mario or similar crowd-pleasers: those
+   melodies are still under copyright and this repository is public. */
+const EXAMPLES = [
+  ["Scale",      "Scale:d=32,o=5,b=160:c,d,e,f,g,a,b,c6,b,a,g,f,e,d,c",
+                 "a pitch sweep, for hearing where a transducer drops off"],
+  ["Gran Vals",  "GranVals:d=4,o=5,b=180:8e6,8d6,f#,g#,8c#6,8b,d,e,8b,8a,c#,e,2a",
+                 "octave jumps and sharps"],
+  ["Ode to Joy", "OdeToJoy:d=4,o=5,b=140:e,e,f,g,g,f,e,d,c,c,d,e,e.,8d,2d",
+                 "stepwise melody, for comparing voices"],
+  ["Off-spec",   "OffSpec:d=3,o=5,b=700:c,64d,e6,16f.,p,g#",
+                 "deliberately off-spec, to show the warning marks"],
+];
+
+function buildExamples(){
+  const host = document.querySelector(".ex-buttons");
+  for (const [label, rtttl, why] of EXAMPLES){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ex";
+    b.textContent = label;
+    b.title = why;
+    b.addEventListener("click", () => {
+      if (playing) cancelPlayback();
+      srcEl.value = rtttl;
+      renderHighlight();
+      compile();
+      srcEl.focus();
+    });
+    host.appendChild(b);
+  }
+}
+buildExamples();
 
 /* the voice table is generated from the definitions, so it can't drift */
 function describeFilters(spec){
