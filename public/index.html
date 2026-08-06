@@ -259,6 +259,16 @@
   .s-err{text-decoration:underline wavy var(--gb-red);text-underline-offset:3px}
 
   .msg{min-height:19px;margin-top:7px;font-size:var(--fs-xs);line-height:1.5}
+  /* one-shot flash when Play is pressed on a tune that won't parse */
+  @keyframes nudge{
+    0%,100%{background:transparent}
+    18%{background:rgba(251,73,52,.22)}
+  }
+  .msg.nudge{
+    animation:nudge .5s ease-out;
+    border-radius:var(--r-sm);
+    box-decoration-break:clone;
+  }
   .msg.err{color:var(--gb-red-hi)}
   .msg.warn{color:var(--gb-yellow)}
   .msg.ok{color:var(--ink-dim)}
@@ -475,6 +485,8 @@
   @media (prefers-reduced-motion:reduce){
     .transport,.cancel,.editor,.reset,.notes-toggle,
     .tabs button,select,input[type=checkbox]{transition:none}
+    /* the focus move still communicates the failure without the flash */
+    .msg.nudge{animation:none}
   }
 </style>
 </head>
@@ -956,7 +968,16 @@ function schedule(song, voiceName){
 
 function startPlayback(){
   const song = compile();
-  if (!song) return;
+  if (!song){
+    /* Pressing Play on a tune that won't parse used to do nothing at all, which
+       reads as a broken button rather than a broken tune. Send focus to the
+       text and draw the eye to the reason. */
+    srcEl.focus();
+    msgEl.classList.remove("nudge");
+    void msgEl.offsetWidth;              // restart the animation if it's mid-flight
+    msgEl.classList.add("nudge");
+    return;
+  }
   ensureAudio();
   audio.resume();
   teardown();
@@ -1198,16 +1219,16 @@ function refreshStatus(){
   stWarnWrap.hidden = w === 0;
 }
 
-function compile(){
+/* Parse what's in the box and report it.
+
+   `apply` is false while a tune is playing. The scheduler and paint() both read
+   `current`, so replacing it mid-playback would corrupt the running tune — but
+   the message line and the editor rail still have to keep up with what you are
+   typing, or they end up contradicting the squiggles the highlighter has
+   already drawn. So a preview pass updates the report and nothing else. */
+function compile(apply = true){
   try{
     const song = parseRTTTL(srcEl.value, tuningEl.value);
-    current = song;
-    nameEl.textContent = song.name || "untitled";
-    document.getElementById("mO").textContent = song.o;
-    document.getElementById("mD").textContent = Math.round(1/song.d);
-    document.getElementById("mB").textContent = song.b;
-    document.getElementById("mN").textContent = song.notes.length;
-    totalEl.textContent = fmt(song.total);
     if (song.warnings.length){
       msgEl.className = "msg warn";
       msgEl.textContent = song.warnings.slice(0,3).join(" ") +
@@ -1217,17 +1238,28 @@ function compile(){
       msgEl.textContent = `${song.notes.length} notes, ${song.total.toFixed(1)} s.`;
     }
     editorEl.dataset.state = song.warnings.length ? "warn" : "ok";
+    if (!apply) return song;
+
+    current = song;
+    nameEl.textContent = song.name || "untitled";
+    document.getElementById("mO").textContent = song.o;
+    document.getElementById("mD").textContent = Math.round(1/song.d);
+    document.getElementById("mB").textContent = song.b;
+    document.getElementById("mN").textContent = song.notes.length;
+    totalEl.textContent = fmt(song.total);
     refreshStatus();
     paint(-1);
     return song;
   }catch(err){
-    current = null;
     msgEl.className = "msg err";
     msgEl.textContent = err.message;
+    editorEl.dataset.state = "err";
+    if (!apply) return null;
+
+    current = null;
     nameEl.textContent = "no tune loaded";
     ["mO","mD","mB","mN"].forEach(id => document.getElementById(id).textContent = "—");
     totalEl.textContent = fmt(0);
-    editorEl.dataset.state = "err";
     refreshStatus();
     paint(-1);
     return null;
@@ -1413,7 +1445,7 @@ playEl.addEventListener("click", () => {
   else if (!stopping) stopPlayback();      // already stopping: let it finish
 });
 cancelEl.addEventListener("click", cancelPlayback);
-srcEl.addEventListener("input", () => { renderHighlight(); if (!playing) compile(); });
+srcEl.addEventListener("input", () => { renderHighlight(); compile(!playing); });
 srcEl.addEventListener("scroll", syncScroll);
 tuningEl.addEventListener("change", () => { saveSettings(); refreshStatus(); if (!playing) compile(); });
 voiceEl.addEventListener("change", () => {
