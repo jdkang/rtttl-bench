@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RTTTL Bench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --chassis:#15171c;
+    --chassis-2:#1c1f26;
+    --chassis-3:#23272f;
+    --rule:#30353f;
+    --ink:#c7ccd8;
+    --ink-dim:#767d8d;
+    --lcd:#9fb072;
+    --lcd-hi:#adbd82;
+    --lcd-lo:#8b9c62;
+    --lcd-ink:#1a2110;
+    --lcd-ink-dim:rgba(26,33,16,.42);
+    --red:#df402c;
+    --red-lo:#9a2a1c;
+    --screw:#3a404b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% -10%, #1e222a 0%, #101216 70%);
+    min-height:100vh;
+    color:var(--ink);
+    font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    font-size:14px;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:28px 16px 60px;
+  }
+
+  .unit{
+    width:100%;
+    max-width:820px;
+    background:linear-gradient(180deg,var(--chassis-2),var(--chassis));
+    border:1px solid var(--rule);
+    border-radius:10px;
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 22px 50px rgba(0,0,0,.55);
+    overflow:hidden;
+  }
+
+  /* ---- chassis header ---- */
+  .head{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    padding:14px 18px;
+    border-bottom:1px solid var(--rule);
+    background:linear-gradient(180deg,#20242c,#1a1d24);
+  }
+  .mark{
+    font-family:Oxanium,system-ui,sans-serif;
+    font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    font-size:15px;color:#e6e9f0;
+  }
+  .mark span{color:var(--lcd)}
+  .sub{
+    font-size:11px;color:var(--ink-dim);letter-spacing:.06em;margin-left:auto;
+  }
+
+  /* ---- LCD ---- */
+  .lcd{
+    margin:16px 18px;
+    background:
+      linear-gradient(180deg,var(--lcd-hi),var(--lcd),var(--lcd-lo));
+    border:1px solid #0c0e0a;
+    border-radius:3px;
+    box-shadow:0 0 0 3px #11141a, 0 8px 18px rgba(0,0,0,.5) inset;
+    padding:12px 14px 10px;
+    color:var(--lcd-ink);
+  }
+  .lcd-top{display:flex;align-items:flex-end;gap:12px;min-height:44px}
+  .now{
+    font-family:Oxanium,system-ui,sans-serif;
+    font-weight:700;font-size:38px;line-height:.92;letter-spacing:.01em;
+    min-width:4ch;
+  }
+  .now.rest{opacity:.4}
+  .now-meta{font-size:11px;line-height:1.5;padding-bottom:4px;letter-spacing:.03em}
+  .now-meta b{font-weight:600}
+  .title{
+    margin-left:auto;text-align:right;padding-bottom:4px;
+    font-size:12px;font-weight:600;letter-spacing:.02em;
+    max-width:48%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .roll{
+    position:relative;height:104px;margin-top:8px;
+    border-top:1px solid var(--lcd-ink-dim);
+    border-bottom:1px solid var(--lcd-ink-dim);
+  }
+  .roll canvas{display:block;width:100%;height:100%}
+  .lcd-bar{
+    display:flex;gap:16px;flex-wrap:wrap;
+    font-size:11px;letter-spacing:.05em;margin-top:7px;
+  }
+  .lcd-bar .k{color:var(--lcd-ink-dim);margin-right:5px}
+  .lcd-bar .clock{margin-left:auto;font-variant-numeric:tabular-nums}
+
+  /* ---- source ---- */
+  .src{padding:0 18px 4px}
+  label.field{
+    display:block;font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--ink-dim);margin-bottom:6px;
+  }
+  textarea{
+    width:100%;min-height:96px;resize:vertical;
+    background:#101318;color:#dfe4ee;
+    border:1px solid var(--rule);border-radius:5px;
+    padding:10px 12px;
+    font:400 13px/1.55 "IBM Plex Mono",monospace;
+    outline:none;
+  }
+  textarea:focus{border-color:#566079;box-shadow:0 0 0 3px rgba(159,176,114,.14)}
+  .msg{min-height:19px;margin-top:7px;font-size:12px;line-height:1.5}
+  .msg.err{color:#f08a78}
+  .msg.warn{color:#cbb46a}
+  .msg.ok{color:var(--ink-dim)}
+
+  /* ---- controls ---- */
+  .panel{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    margin:14px 18px 18px;padding-top:16px;
+    border-top:1px solid var(--rule);
+  }
+  .transport{
+    appearance:none;border:0;cursor:pointer;
+    width:120px;height:52px;border-radius:6px;
+    font-family:Oxanium,system-ui,sans-serif;
+    font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;
+    background:linear-gradient(180deg,var(--lcd-hi),var(--lcd-lo));
+    color:#141a0c;
+    box-shadow:0 3px 0 #5f6c43, 0 6px 12px rgba(0,0,0,.45);
+    transition:transform .06s ease, box-shadow .06s ease;
+  }
+  .transport:active{transform:translateY(3px);box-shadow:0 0 0 #5f6c43,0 2px 6px rgba(0,0,0,.5)}
+  .transport.on{
+    background:linear-gradient(180deg,#ef5a44,var(--red));
+    color:#2a0a05;box-shadow:0 3px 0 var(--red-lo),0 6px 16px rgba(223,64,44,.28);
+  }
+  .transport:focus-visible{outline:2px solid #dfe4ee;outline-offset:3px}
+
+  .cancel{
+    appearance:none;cursor:pointer;
+    height:52px;padding:0 22px;border-radius:6px;
+    background:linear-gradient(180deg,#282c35,#1d2027);
+    border:1px solid #3c424e;color:#b9bfcd;
+    font-family:Oxanium,system-ui,sans-serif;
+    font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+    box-shadow:0 3px 0 #14161b, 0 6px 12px rgba(0,0,0,.4);
+    transition:transform .06s ease, box-shadow .06s ease, color .12s ease;
+  }
+  .cancel:not(:disabled):hover{color:#f08a78;border-color:var(--red-lo)}
+  .cancel:not(:disabled):active{transform:translateY(3px);box-shadow:0 0 0 #14161b,0 2px 6px rgba(0,0,0,.5)}
+  .cancel:disabled{opacity:.32;cursor:default}
+  .cancel:focus-visible{outline:2px solid #dfe4ee;outline-offset:3px}
+
+  .knobs{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+  .knob{display:flex;flex-direction:column;gap:5px}
+  .knob>span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+  select{
+    appearance:none;background:#101318 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='6'><path d='M0 0h9L4.5 6z' fill='%23767d8d'/></svg>") no-repeat right 9px center;
+    color:var(--ink);border:1px solid var(--rule);border-radius:4px;
+    padding:6px 26px 6px 9px;font:400 12px "IBM Plex Mono",monospace;cursor:pointer;
+  }
+  select:focus-visible,input:focus-visible{outline:2px solid #566079;outline-offset:1px}
+  input[type=range]{width:104px;accent-color:var(--lcd)}
+  .check{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink);cursor:pointer}
+  input[type=checkbox]{accent-color:var(--lcd);width:15px;height:15px;cursor:pointer}
+
+  /* ---- service notes ---- */
+  .notes{margin:0 18px;padding-top:15px;border-top:1px solid var(--rule)}
+  .notes-head{display:flex;align-items:center;gap:12px}
+  .notes-head h2{
+    margin:0;font-family:Oxanium,system-ui,sans-serif;font-weight:700;
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-dim);
+  }
+  .notes-head .hint{font-size:11px;color:#5f6675}
+  .notes-toggle{
+    margin-left:auto;background:none;border:1px solid var(--rule);border-radius:4px;
+    color:var(--ink-dim);font:400 11px "IBM Plex Mono",monospace;
+    padding:4px 10px;cursor:pointer;
+  }
+  .notes-toggle:hover{color:var(--ink);border-color:#454b58}
+  .notes-toggle:focus-visible{outline:2px solid #566079;outline-offset:2px}
+
+  .tabs{display:flex;gap:2px;flex-wrap:wrap;margin-top:12px}
+  .tabs button{
+    background:none;border:0;border-bottom:2px solid transparent;
+    color:var(--ink-dim);font:500 12px "IBM Plex Mono",monospace;
+    padding:6px 10px;cursor:pointer;
+  }
+  .tabs button:hover{color:var(--ink)}
+  .tabs button[aria-selected="true"]{color:var(--lcd);border-bottom-color:var(--lcd)}
+  .tabs button:focus-visible{outline:2px solid #566079;outline-offset:-2px}
+
+  .tabpanel{
+    padding:15px 0 4px;max-width:70ch;
+    font-size:12.5px;line-height:1.72;color:#a4abbb;
+  }
+  .tabpanel[hidden]{display:none}
+  .tabpanel p{margin:0 0 11px}
+  .tabpanel p:last-child{margin-bottom:0}
+  .tabpanel h3{
+    margin:18px 0 7px;font-family:Oxanium,system-ui,sans-serif;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    font-weight:700;color:#dfe4ee;
+  }
+  .tabpanel h3:first-child{margin-top:0}
+  .tabpanel code{
+    background:#101318;color:#dbe0ea;border-radius:3px;
+    padding:1px 5px;font-size:11.5px;
+  }
+  .tabpanel a{color:var(--lcd)}
+  .tabpanel ul{margin:0 0 11px;padding-left:18px}
+  .tabpanel li{margin-bottom:5px}
+
+  .tag{
+    display:inline-block;font-size:9px;font-weight:600;letter-spacing:.13em;
+    text-transform:uppercase;padding:2px 6px;border-radius:3px;
+    margin-right:7px;position:relative;top:-1px;
+  }
+  .tag.src{background:rgba(159,176,114,.15);color:var(--lcd)}
+  .tag.doc{background:rgba(126,158,224,.15);color:#8ea9de}
+  .tag.est{background:rgba(223,64,44,.16);color:#e5806f}
+
+  .scroller{overflow-x:auto;margin:0 0 12px}
+  table.spec{width:100%;min-width:420px;border-collapse:collapse;font-size:11.5px}
+  .spec th{
+    text-align:left;padding:0 12px 6px 0;border-bottom:1px solid var(--rule);
+    font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+    font-weight:600;color:var(--ink-dim);white-space:nowrap;
+  }
+  .spec td{padding:6px 12px 6px 0;border-bottom:1px solid #232732;vertical-align:top}
+  .spec td:first-child{color:#dfe4ee;white-space:nowrap}
+  .spec tr:last-child td{border-bottom:0}
+
+  .foot{
+    padding:0 18px 16px;font-size:11px;line-height:1.6;color:var(--ink-dim);
+  }
+  .foot code{color:#a8b0c2}
+
+  @media (max-width:560px){
+    .now{font-size:30px}
+    .title{max-width:100%;}
+    .transport{width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .transport{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="unit">
+
+  <div class="head">
+    <div class="mark">RTTTL <span>Bench</span></div>
+    <div class="sub">monophonic tone generator &middot; web audio</div>
+  </div>
+
+  <div class="lcd" role="group" aria-label="Readout">
+    <div class="lcd-top">
+      <div class="now" id="now">—</div>
+      <div class="now-meta" id="nowMeta">
+        <div><b>—</b> Hz</div>
+        <div>note <b>—</b></div>
+      </div>
+      <div class="title" id="songName">no tune loaded</div>
+    </div>
+    <div class="roll"><canvas id="roll"></canvas></div>
+    <div class="lcd-bar">
+      <div><span class="k">o</span><b id="mO">—</b></div>
+      <div><span class="k">d</span><b id="mD">—</b></div>
+      <div><span class="k">b</span><b id="mB">—</b></div>
+      <div><span class="k">notes</span><b id="mN">—</b></div>
+      <div class="clock"><b id="mClock">0:00.0</b> / <span id="mTotal">0:00.0</span></div>
+    </div>
+  </div>
+
+  <div class="src">
+    <label class="field" for="src">RTTTL string</label>
+    <textarea id="src" spellcheck="false" autocomplete="off">Scale:d=32,o=5,b=160:c,d,e,f,g,a,b,c6,b,a,g,f,e,d,c</textarea>
+    <div class="msg ok" id="msg">Paste a tune and press play.</div>
+  </div>
+
+  <div class="panel">
+    <button class="transport" id="play" aria-live="polite">Play</button>
+    <button class="cancel" id="cancel" disabled title="Cut playback immediately">Cancel</button>
+    <div class="knobs">
+      <label class="knob"><span>Voice</span>
+        <select id="voice">
+          <optgroup label="Bare oscillator">
+            <option value="sine" selected>sine — rtttl.js original</option>
+            <option value="triangle">triangle</option>
+            <option value="square">square</option>
+            <option value="sawtooth">sawtooth</option>
+          </optgroup>
+          <optgroup label="Transducers">
+            <option value="apollo">Apollo piezo (BTN-1, MSR-2…)</option>
+            <option value="piezo12">piezo disc, 12 mm</option>
+            <option value="piezo30">piezo disc, 30 mm</option>
+            <option value="magnetic">magnetic buzzer</option>
+            <option value="speaker">tiny paper speaker</option>
+          </optgroup>
+          <optgroup label="Pulse / chip">
+            <option value="pwm25">PWM, 25% duty</option>
+            <option value="pwm125">PWM, 12.5% duty</option>
+            <option value="bell">bell / music box</option>
+          </optgroup>
+        </select>
+      </label>
+      <label class="knob"><span>PWM duty <b id="dutyVal">60%</b></span>
+        <input type="range" id="duty" min="5" max="95" step="5" value="60">
+      </label>
+      <label class="knob"><span>Volume</span>
+        <input type="range" id="vol" min="0" max="30" value="10">
+      </label>
+      <label class="knob"><span>Tuning</span>
+        <select id="tuning">
+          <option value="std" selected>standard A4=440</option>
+          <option value="demo">rtttl.js demo (+9 st)</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="loop"> Loop</label>
+    </div>
+  </div>
+
+  <section class="notes">
+    <div class="notes-head">
+      <h2>Service notes</h2>
+      <span class="hint">how it works, and what's a guess</span>
+      <button class="notes-toggle" id="notesToggle" aria-expanded="true" aria-controls="notesBody">Hide</button>
+    </div>
+
+    <div id="notesBody">
+      <div class="tabs" role="tablist" aria-label="Service notes sections">
+        <button role="tab" id="tab-origin"   aria-controls="p-origin"   aria-selected="true">Origin</button>
+        <button role="tab" id="tab-envelope" aria-controls="p-envelope" aria-selected="false">Envelope</button>
+        <button role="tab" id="tab-tuning"   aria-controls="p-tuning"   aria-selected="false">Tuning</button>
+        <button role="tab" id="tab-voices"   aria-controls="p-voices"   aria-selected="false">Voices</button>
+        <button role="tab" id="tab-apollo"   aria-controls="p-apollo"   aria-selected="false">Apollo</button>
+        <button role="tab" id="tab-limits"   aria-controls="p-limits"   aria-selected="false">Not modelled</button>
+      </div>
+
+      <p style="margin:12px 0 0;font-size:11px;color:#5f6675;line-height:1.6">
+        <span class="tag src">from source</span>read out of published code &nbsp;
+        <span class="tag doc">from docs</span>stated by the vendor &nbsp;
+        <span class="tag est">estimated</span>my guess, tune it yourself
+      </p>
+
+      <div class="tabpanel" role="tabpanel" id="p-origin" aria-labelledby="tab-origin">
+        <h3>Where this came from</h3>
+        <p><span class="tag src">from source</span>The parser and the default envelope are ported from Isaiah Odhner's <a href="https://github.com/1j01/rtttl.js" target="_blank" rel="noopener">1j01/rtttl.js</a> — specifically <code>rtttl.coffee</code> and <code>player.coffee</code>, MIT licensed. Everything else here is new.</p>
+        <p>The parser keeps the original's two-tier approach: a strict pattern matching the Nokia spec, then a lenient fallback that accepts odd durations and octaves but raises a warning rather than failing. Spec defaults are <code>d=4</code>, <code>o=6</code>, <code>b=63</code> when the control section leaves them out.</p>
+        <p>Note duration is <code>(1/d) × 4 × (60/b)</code> seconds, with each trailing dot multiplying by 1.5. Output was checked against an independent implementation: for <code>Back to the Future</code>, the first four events resolve to 450&nbsp;ms at 784&nbsp;Hz, a 75&nbsp;ms rest, 450&nbsp;ms at 523.3&nbsp;Hz, another 75&nbsp;ms rest — matching to the tenth of a hertz.</p>
+        <h3>Scheduling</h3>
+        <p>The whole tune is written to the Web Audio clock in one pass before playback starts, rather than being driven by timers. Timing is therefore sample-accurate and doesn't drift when the page is busy. The cost is that changing a control mid-song has to stop and reschedule.</p>
+      </div>
+
+      <div class="tabpanel" role="tabpanel" id="p-envelope" aria-labelledby="tab-envelope" hidden>
+        <h3>Why a bare oscillator sounds harsh</h3>
+        <p>Switching an oscillator on and off at full amplitude produces a step discontinuity in the waveform, and a step contains energy at every frequency. That's the click. It reads as harshness because it happens on every note.</p>
+        <p><span class="tag src">from source</span>The <code>sine</code> voice uses the original fix: fade in over 1&nbsp;ms, hold, fade out over the final 40&nbsp;ms, then leave 10&nbsp;ms of silence before the next note. The gap is what separates repeated notes at the same pitch — without it they slur into one long tone.</p>
+        <h3>Profiles in use</h3>
+        <div class="scroller"><table class="spec">
+          <thead><tr><th>Profile</th><th>Attack</th><th>Release</th><th>Gap</th><th>Used by</th></tr></thead>
+          <tbody>
+            <tr><td>smooth</td><td>1 ms</td><td>40 ms</td><td>10 ms</td><td>bare oscillators</td></tr>
+            <tr><td>snap</td><td>1 ms</td><td>6 ms</td><td>4 ms</td><td>PWM, paper speaker</td></tr>
+            <tr><td>gate</td><td>0.6 ms</td><td>1.5 ms</td><td>2 ms</td><td>piezo, magnetic</td></tr>
+            <tr><td>decay</td><td>2 ms</td><td>exponential, 1.1 s</td><td>5 ms</td><td>bell</td></tr>
+          </tbody>
+        </table></div>
+        <p>All four scale down proportionally on short notes, so a 32nd note at <code>b=900</code> still gets a proportionate shape instead of an envelope longer than the note. The <code>gate</code> profile is deliberately close to a hard switch, because that's what a PWM pin does — the clicks it produces are the point, not an oversight.</p>
+        <h3>Stop versus cancel</h3>
+        <p>Because the whole tune is written to the audio clock in advance, halting it has two sensible meanings. <strong>Stop</strong> lets the note that's currently sounding play out to its own release, discards everything scheduled after it, and abandons a pending loop — so you hear a musical ending. <strong>Cancel</strong> discards the note in progress too, ramping to silence over 3&nbsp;ms; inaudibly short, but enough to avoid the parting click that a true instant cut would produce.</p>
+      </div>
+
+      <div class="tabpanel" role="tabpanel" id="p-tuning" aria-labelledby="tab-tuning" hidden>
+        <h3>The original is nine semitones sharp</h3>
+        <p><span class="tag src">from source</span>rtttl.js computes frequency as <code>440 × 2^(octave − 4 + index/12)</code>, where index is 0 for C. That makes <strong>C4 = 440&nbsp;Hz</strong>. Under standard pitch C4 is 261.6&nbsp;Hz and it's A4 that sits at 440.</p>
+        <p>Every note is shifted by the same interval, so relative pitch is intact and melodies are recognisable — they just play a major sixth above where they should. This bench defaults to <code>440 × 2^(octave − 4 + (index − 9)/12)</code>, which puts A4 at 440&nbsp;Hz and matches what ESPHome sends to a buzzer.</p>
+        <p>The <strong>rtttl.js demo</strong> tuning option restores the original behaviour if you want to compare against that page directly.</p>
+        <h3>Which octave RTTTL means</h3>
+        <p>RTTTL octave numbers line up with scientific pitch notation, so <code>o=5</code>, note <code>a</code> is 880&nbsp;Hz. Most tunes in the wild are written for <code>o=5</code> or <code>o=6</code>, which matters a lot once a highpass filter is in the chain — see the Voices tab.</p>
+      </div>
+
+      <div class="tabpanel" role="tabpanel" id="p-voices" aria-labelledby="tab-voices" hidden>
+        <h3>What a voice is</h3>
+        <p>One or more oscillators at fixed ratios of the note frequency, a gain envelope, and a fixed filter chain standing in for the physical transducer. The filter chain is where the character lives.</p>
+        <p><span class="tag est">estimated</span>Every transducer voice below is a plausible model rather than a measurement of a specific part. The shapes are right; the exact numbers are mine.</p>
+        <div class="scroller"><table class="spec" id="voiceTable">
+          <thead><tr><th>Voice</th><th>Source</th><th>Envelope</th><th>Filter chain</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <h3>Why a highpass matters so much</h3>
+        <p>A small transducer can't move air at low frequencies, so its fundamental below roughly a kilohertz simply doesn't come out. What you hear instead is the note's harmonics. That means a tune written in <code>o=5</code> can sound an octave up, thin and detached, on hardware while sounding fine in a browser — and it's the single most common reason a transcription that plays nicely on a laptop disappoints on a device.</p>
+        <h3>Pulse waves</h3>
+        <p>The pulse voices are built from Fourier coefficients (<code>2/(nπ) · sin(nπd)</code> for 96 harmonics) rather than a naive square, so the browser band-limits them and they don't alias into garbage at high octaves. Duty cycle changes the harmonic balance: 50% cancels all even harmonics, narrower duties get progressively more nasal and quieter.</p>
+      </div>
+
+      <div class="tabpanel" role="tabpanel" id="p-apollo" aria-labelledby="tab-apollo" hidden>
+        <h3>What's confirmed</h3>
+        <p><span class="tag doc">from docs</span>Apollo Automation devices with a buzzer — BTN-1, MSR-2, MTR-1, TEMP-1, PLT-1, R PRO-1, AIR-1 and the holiday ornaments — all use a passive piezo element, driven by ESPHome's <code>rtttl</code> component on an ESP32 <code>ledc</code> PWM output. Their reference configuration is a plain <code>output: platform: ledc</code> feeding <code>rtttl:</code>. So the signal reaching the element is a hard-gated pulse train, not a shaped tone.</p>
+        <h3>What's estimated</h3>
+        <p><span class="tag est">estimated</span>Apollo don't publish the element, its resonant frequency, or the enclosure acoustics anywhere I could find, and their wiki doesn't name a part. The filter chain models the <em>class</em> of component they're visibly using — a small element behind a narrow port in a tight plastic shell:</p>
+        <ul>
+          <li><strong>Highpass, 1.8&nbsp;kHz</strong> — a small piezo produces essentially nothing below this, so notes in <code>o=4</code> and <code>o=5</code> arrive as harmonics only.</li>
+          <li><strong>+7&nbsp;dB at 2.7&nbsp;kHz, Q 3</strong> — the enclosure cavity mode.</li>
+          <li><strong>+20&nbsp;dB at 4.2&nbsp;kHz, Q 6</strong> — the element's own resonance. The high Q is why each note-off rings briefly.</li>
+          <li><strong>Lowpass, 11&nbsp;kHz</strong> — the top end rolls away.</li>
+        </ul>
+        <p>The audible signature is that notes are wildly uneven in loudness: anything near 4&nbsp;kHz stabs, anything much below <code>o=6</code> sounds thin and far away. That unevenness is the real-world behaviour worth designing around.</p>
+        <h3>PWM duty and ESPHome's gain</h3>
+        <p>The duty slider is the analogue of <code>gain:</code> in an ESPHome <code>rtttl</code> block. On a piezo it isn't really a volume control — it's a duty-cycle control, so lowering it thins the tone and shifts harmonic balance as much as it reduces level. 60% is the default here because that's what most community configurations use.</p>
+        <p>If you have one of these on the bench, play a sustained note, find where the peak actually sits, and the 4.2&nbsp;kHz figure is a one-line change in the <code>apollo</code> voice definition.</p>
+      </div>
+
+      <div class="tabpanel" role="tabpanel" id="p-limits" aria-labelledby="tab-limits" hidden>
+        <h3>Known gaps</h3>
+        <ul>
+          <li><strong>LEDC frequency quantisation.</strong> The ESP32 can only produce frequencies its clock divider and bit resolution allow, so real hardware lands slightly off-pitch, increasingly so at high notes. This bench plays exact frequencies.</li>
+          <li><strong>Enclosure resonance.</strong> Whatever you mount a disc into moves the resonant peak, sometimes by a lot. A bare disc on a bench and the same disc in a case are different instruments.</li>
+          <li><strong>Filter ringing is not physical ringing.</strong> A high-Q biquad rings after the gate closes, which sounds convincingly like a piezo, but it's a coincidence of similar mathematics rather than a mechanical model.</li>
+          <li><strong>No drive nonlinearity.</strong> A piezo driven hard from a GPIO pin distorts and can be current-limited. Nothing here clips or saturates.</li>
+          <li><strong>ESPHome note timing.</strong> Its inter-note behaviour isn't reproduced exactly; the <code>gate</code> profile is a close approximation, not a port.</li>
+          <li><strong>Your playback chain.</strong> Laptop speakers roll off low frequencies too, which can mask exactly the effect these voices are demonstrating. Headphones give a truer comparison.</li>
+          <li><strong>Monophonic only.</strong> RTTTL is a single-voice format and so is this.</li>
+        </ul>
+        <h3>Parser edge cases</h3>
+        <p>Non-ASCII characters in a data section will fail the note match and stop parsing with an error naming the token — a few tunes in circulation contain them. Off-spec durations and octaves are accepted with a warning rather than rejected, so the message line below the text box is worth reading when something sounds wrong.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <code>space</code> starts, and stops at the end of the note that's sounding. <code>esc</code> or Cancel cuts immediately. Nothing leaves the page.
+  </div>
+
+</div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------ parser
+   Ported from 1j01/rtttl.js (rtttl.coffee). Defaults per the Nokia spec:
+   d=4, o=6, b=63. Falls back to a lenient pattern with a warning. */
+
+const PITCHES = ["c","c#","d","d#","e","f","f#","g","g#","a","a#","b"];
+const STRICT  = /^(1|2|4|8|16|32)?(p|c#|c|d#|d|e|f#|f|g#|g|a#|a|b)(4|5|6|7)?$/;
+const LOOSE   = /^(\d+)?(p|c#|c|d#|d|e|f#|f|g#|g|a#|a|b)(\d+)?$/;
+
+function semitoneOf(name, octave){          // 0 = c4
+  return (octave - 4) * 12 + PITCHES.indexOf(name);
+}
+function freqOf(semi, tuning){
+  // standard: a4 (semi 9) = 440 Hz. demo: reproduces rtttl.js, 9 semitones sharp.
+  return 440 * Math.pow(2, (tuning === "demo" ? semi : semi - 9) / 12);
+}
+
+function parseRTTTL(str, tuning){
+  const song = {
+    name:"", o:6, d:1/4, b:63,
+    notes:[], warnings:[], total:0
+  };
+  const sections = String(str).trim().split(":");
+  if (sections.length !== 3)
+    throw new Error(`Expected three sections separated by ":" — found ${sections.length}.`);
+
+  song.name = sections[0].trim();
+  const control = sections[1].toLowerCase().replace(/\s/g, "");
+  const data    = sections[2].toLowerCase().replace(/\s/g, "");
+
+  for (const assignment of control.split(",")){
+    if (!assignment) continue;
+    const [opt, val] = assignment.split("=");
+    const v = parseInt(val, 10);
+    if (opt === "o"){
+      if (!Number.isFinite(v)) { song.warnings.push(`Ignored octave "${assignment}".`); continue; }
+      song.o = v;
+      if (![4,5,6,7].includes(v)) song.warnings.push(`Off-spec default octave o=${v}.`);
+    } else if (opt === "d"){
+      if (!Number.isFinite(v) || v === 0) { song.warnings.push(`Ignored duration "${assignment}".`); continue; }
+      song.d = 1 / v;
+      if (![1,2,4,8,16,32].includes(v)) song.warnings.push(`Off-spec default duration d=${v}.`);
+    } else if (opt === "b"){
+      if (!Number.isFinite(v) || v <= 0) { song.warnings.push(`Ignored tempo "${assignment}".`); continue; }
+      song.b = v;
+      if (v < 10 || v > 500) song.warnings.push(`Tempo b=${v} is outside 10–500.`);
+    } else {
+      song.warnings.push(`Unknown control "${opt}" — ignored.`);
+    }
+  }
+
+  let t = 0;
+  for (const raw of data.split(/[,;]/)){
+    const token = raw.trim();
+    if (!token) continue;
+    const dots = (token.match(/\./g) || []).length;
+    const bare = token.replace(/\./g, "");
+
+    let m = STRICT.exec(bare);
+    if (!m){
+      m = LOOSE.exec(bare);
+      if (m) song.warnings.push(`Off-spec duration or octave: "${token}".`);
+    }
+    if (!m) throw new Error(`Can't read note "${token}".`);
+
+    const [, dRaw, name, oRaw] = m;
+    let duration = dRaw ? 1 / parseInt(dRaw, 10) : song.d;
+    const octave = oRaw ? parseInt(oRaw, 10) : song.o;
+    for (let i = 0; i < dots; i++) duration *= 1.5;
+
+    const seconds = duration * 4 * (60 / song.b);
+    const rest = name === "p";
+    const semi = rest ? null : semitoneOf(name, octave);
+
+    song.notes.push({
+      token, name, octave, rest, seconds, semi,
+      frequency: rest ? 0 : freqOf(semi, tuning),
+      at: t
+    });
+    t += seconds;
+  }
+  if (!song.notes.length) throw new Error("No notes in the data section.");
+  song.total = t;
+  return song;
+}
+
+/* ------------------------------------------------------------------ voices
+   A voice is: one or more oscillators (fixed ratios of the note frequency),
+   a per-note gain envelope, and a fixed filter chain standing in for the
+   physical transducer. A piezo disc is a stiff plate with a sharp mechanical
+   resonance and no low end at all — a highpass plus a big peaking boost gets
+   most of the way there, and it reproduces the real giveaway: notes near
+   resonance are piercing, notes below it nearly vanish. */
+
+const ENVS = {
+  // a = attack, r = release, gap = silence before the next note
+  smooth: { a:0.001,  r:0.040, gap:0.010 },              // player.coffee
+  snap:   { a:0.001,  r:0.006, gap:0.004 },
+  gate:   { a:0.0006, r:0.0015, gap:0.002 },             // hard PWM on/off
+  decay:  { a:0.002,  gap:0.005, decay:1.1, exp:true }
+};
+
+const VOICES = {
+  sine:      { partials:[{type:"sine"}],     env:"smooth", trim:1.00 },
+  triangle:  { partials:[{type:"triangle"}], env:"smooth", trim:0.90 },
+  square:    { partials:[{type:"square"}],   env:"smooth", trim:0.50 },
+  sawtooth:  { partials:[{type:"sawtooth"}], env:"smooth", trim:0.50 },
+
+  apollo: {
+    // Small onboard piezo element behind a narrow port in a tight plastic
+    // shell — no low end whatsoever, one sharp resonance, a weaker cavity
+    // mode below it, and enough Q that the note-off rings for a moment.
+    partials:[{duty:0.6}], env:"gate", trim:0.34,
+    filters:[ {type:"highpass", f:1800, Q:0.8},
+              {type:"peaking",  f:2700, Q:3.0, gain:7},
+              {type:"peaking",  f:4200, Q:6.0, gain:20},
+              {type:"lowpass",  f:11000, Q:0.7} ]
+  },
+  piezo12: {
+    partials:[{duty:0.5}], env:"gate", trim:0.40,
+    filters:[ {type:"highpass", f:1500, Q:0.8},
+              {type:"peaking",  f:4100, Q:4.0, gain:17},
+              {type:"lowpass",  f:9000, Q:0.7} ]
+  },
+  piezo30: {
+    partials:[{duty:0.5}], env:"gate", trim:0.42,
+    filters:[ {type:"highpass", f:620,  Q:0.8},
+              {type:"peaking",  f:2300, Q:3.0, gain:14},
+              {type:"lowpass",  f:7000, Q:0.7} ]
+  },
+  magnetic: {
+    partials:[{duty:0.5}], env:"gate", trim:0.50,
+    filters:[ {type:"highpass", f:340,  Q:0.7},
+              {type:"peaking",  f:2000, Q:1.8, gain:9},
+              {type:"lowpass",  f:5200, Q:0.9} ]
+  },
+  speaker: {
+    partials:[{duty:0.5}], env:"snap", trim:0.55,
+    filters:[ {type:"highpass", f:420,  Q:0.7},
+              {type:"peaking",  f:1400, Q:1.1, gain:5},
+              {type:"lowpass",  f:4200, Q:1.0} ]
+  },
+
+  pwm25:  { partials:[{duty:0.25}],  env:"snap", trim:0.48, fixedDuty:true },
+  pwm125: { partials:[{duty:0.125}], env:"snap", trim:0.48, fixedDuty:true },
+  bell: {
+    partials:[ {type:"sine", ratio:1,    gain:1.00},
+               {type:"sine", ratio:2.76, gain:0.34},
+               {type:"sine", ratio:5.40, gain:0.14} ],
+    env:"decay", trim:0.95
+  }
+};
+
+/* band-limited pulse train of a given duty cycle */
+const waveCache = new Map();
+function pulseWave(duty){
+  if (waveCache.has(duty)) return waveCache.get(duty);
+  const n = 96, real = new Float32Array(n+1), imag = new Float32Array(n+1);
+  for (let i = 1; i <= n; i++) imag[i] = (2/(i*Math.PI)) * Math.sin(Math.PI*i*duty);
+  const w = audio.createPeriodicWave(real, imag, {disableNormalization:false});
+  waveCache.set(duty, w);
+  return w;
+}
+
+/* ------------------------------------------------------------------ player
+   Everything is scheduled up front on the audio clock. The envelope shape for
+   the default voice comes straight from player.coffee: ramp up over 1 ms,
+   hold, ramp down over the last 40 ms, then 10 ms of silence. */
+
+let audio = null, master = null;
+let voiceNodes = null;                     // {oscs, gain, tail}
+let startedAt = 0, endsAt = 0, playing = false, stopping = false;
+
+function applyEnv(gain, t, s, name){
+  const P = ENVS[name];
+  let last = t - 1;
+  const at = (time) => (last = Math.max(time, last + 0.0002));
+
+  const gap = Math.min(P.gap, s * 0.15);
+  const end = t + s - gap;
+  const a   = Math.min(P.a,   s * 0.10);
+
+  if (P.exp){
+    gain.setValueAtTime(0.0004, at(t));
+    gain.exponentialRampToValueAtTime(1, at(t + a));
+    gain.exponentialRampToValueAtTime(0.0006, at(Math.min(end - 0.002, t + a + P.decay)));
+    gain.linearRampToValueAtTime(0, at(end));
+  } else {
+    const r = Math.min(P.r, s * 0.40);
+    gain.setValueAtTime(0, at(t));
+    gain.linearRampToValueAtTime(1, at(t + a));
+    gain.setValueAtTime(1, at(end - r));
+    gain.linearRampToValueAtTime(0, at(end));
+  }
+}
+
+function buildVoice(spec){
+  const gain = audio.createGain();
+  gain.gain.value = 0;
+
+  const oscs = spec.partials.map(p => {
+    const o = audio.createOscillator();
+    if (p.duty != null){
+      o.setPeriodicWave(pulseWave(spec.fixedDuty ? p.duty : dutyEl.value / 100));
+    } else {
+      o.type = p.type;
+    }
+    o.ratio = p.ratio || 1;
+    if (p.gain != null && p.gain !== 1){
+      const g = audio.createGain();
+      g.gain.value = p.gain;
+      o.connect(g); g.connect(gain);
+    } else {
+      o.connect(gain);
+    }
+    return o;
+  });
+
+  let tail = gain;
+  for (const f of (spec.filters || [])){
+    const b = audio.createBiquadFilter();
+    b.type = f.type;
+    b.frequency.value = f.f;
+    b.Q.value = f.Q;
+    if (f.gain != null) b.gain.value = f.gain;
+    tail.connect(b);
+    tail = b;
+  }
+  const trim = audio.createGain();
+  trim.gain.value = spec.trim;
+  tail.connect(trim);
+  trim.connect(master);
+
+  return { oscs, gain, tail: trim };
+}
+
+function ensureAudio(){
+  if (audio) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  audio = new AC();
+  master = audio.createGain();
+  master.gain.value = volEl.value / 100;
+  master.connect(audio.destination);
+}
+
+function schedule(song, voiceName){
+  const spec = VOICES[voiceName] || VOICES.sine;
+  voiceNodes = buildVoice(spec);
+
+  const g = voiceNodes.gain.gain;
+  let t = audio.currentTime + 0.06;
+  startedAt = t;
+
+  for (const note of song.notes){
+    if (!note.rest){
+      for (const o of voiceNodes.oscs)
+        o.frequency.setValueAtTime(note.frequency * o.ratio, t);
+      applyEnv(g, t, note.seconds, spec.env);
+    }
+    t += note.seconds;
+  }
+  endsAt = t;
+  for (const o of voiceNodes.oscs){ o.start(startedAt); o.stop(endsAt + 0.05); }
+}
+
+function startPlayback(){
+  const song = compile();
+  if (!song) return;
+  ensureAudio();
+  audio.resume();
+  teardown();
+  schedule(song, voiceEl.value);
+  playing = true;
+  stopping = false;
+  playEl.textContent = "Stop";
+  playEl.classList.add("on");
+  cancelEl.disabled = false;
+  requestAnimationFrame(tick);
+}
+
+function teardown(fade){
+  if (!voiceNodes) return;
+  const t = audio.currentTime;
+  const f = fade == null ? 0.01 : fade;
+  const { oscs, gain, tail } = voiceNodes;
+  try{
+    for (const o of oscs) o.frequency.cancelScheduledValues(t);
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(gain.gain.value, t);
+    gain.gain.linearRampToValueAtTime(0, t + f);           // fade, never a click
+    for (const o of oscs) o.stop(t + f + 0.01);
+    setTimeout(() => { try{ tail.disconnect(); }catch(e){} }, 200);
+  }catch(e){ /* already stopped */ }
+  voiceNodes = null;
+}
+
+/* Stop: let the note that's currently sounding finish, then end. Anything
+   still scheduled after it is discarded, and a pending loop is abandoned. */
+function stopPlayback(){
+  if (!playing || stopping || !voiceNodes){ cancelPlayback(); return; }
+  const note = current.notes[Math.max(0, liveIndex())];
+  const noteEnd = startedAt + note.at + note.seconds;
+  if (noteEnd <= audio.currentTime + 0.02){ cancelPlayback(); return; }
+
+  try{
+    const g = voiceNodes.gain.gain;
+    g.cancelScheduledValues(noteEnd);                      // drop the rest of the tune
+    g.setValueAtTime(0, noteEnd);
+    for (const o of voiceNodes.oscs) o.stop(noteEnd + 0.02);
+  }catch(e){ cancelPlayback(); return; }
+
+  endsAt = noteEnd;
+  stopping = true;
+  playEl.textContent = "Stopping";
+}
+
+/* Cancel: cut it now. The 3 ms ramp is inaudible but avoids a parting click. */
+function cancelPlayback(){
+  teardown(0.003);
+  endPlayback();
+}
+
+function endPlayback(){
+  playing = false;
+  stopping = false;
+  playEl.textContent = "Play";
+  playEl.classList.remove("on");
+  cancelEl.disabled = true;
+  paint(-1);
+  setNow(null);
+  clockEl.textContent = fmt(0);
+}
+
+/* ------------------------------------------------------------------ ui */
+
+const srcEl    = document.getElementById("src");
+const msgEl    = document.getElementById("msg");
+const playEl   = document.getElementById("play");
+const cancelEl = document.getElementById("cancel");
+const voiceEl  = document.getElementById("voice");
+const volEl    = document.getElementById("vol");
+const dutyEl   = document.getElementById("duty");
+const dutyVal  = document.getElementById("dutyVal");
+const tuningEl = document.getElementById("tuning");
+const loopEl   = document.getElementById("loop");
+const nowEl    = document.getElementById("now");
+const nowMeta  = document.getElementById("nowMeta");
+const nameEl   = document.getElementById("songName");
+const clockEl  = document.getElementById("mClock");
+const totalEl  = document.getElementById("mTotal");
+const canvas   = document.getElementById("roll");
+const cx       = canvas.getContext("2d");
+
+let current = null;   // last successfully parsed song
+
+function fmt(sec){
+  const s = Math.max(0, sec);
+  return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}.${Math.floor((s*10)%10)}`;
+}
+
+function compile(){
+  try{
+    const song = parseRTTTL(srcEl.value, tuningEl.value);
+    current = song;
+    nameEl.textContent = song.name || "untitled";
+    document.getElementById("mO").textContent = song.o;
+    document.getElementById("mD").textContent = Math.round(1/song.d);
+    document.getElementById("mB").textContent = song.b;
+    document.getElementById("mN").textContent = song.notes.length;
+    totalEl.textContent = fmt(song.total);
+    if (song.warnings.length){
+      msgEl.className = "msg warn";
+      msgEl.textContent = song.warnings.slice(0,3).join(" ") +
+        (song.warnings.length > 3 ? ` (+${song.warnings.length-3} more)` : "");
+    } else {
+      msgEl.className = "msg ok";
+      msgEl.textContent = `${song.notes.length} notes, ${song.total.toFixed(1)} s.`;
+    }
+    paint(-1);
+    return song;
+  }catch(err){
+    current = null;
+    msgEl.className = "msg err";
+    msgEl.textContent = err.message;
+    nameEl.textContent = "no tune loaded";
+    ["mO","mD","mB","mN"].forEach(id => document.getElementById(id).textContent = "—");
+    totalEl.textContent = fmt(0);
+    paint(-1);
+    return null;
+  }
+}
+
+function setNow(note){
+  if (!note){
+    nowEl.textContent = "—";
+    nowEl.classList.remove("rest");
+    nowMeta.innerHTML = "<div><b>—</b> Hz</div><div>note <b>—</b></div>";
+    return;
+  }
+  nowEl.textContent = note.token;
+  nowEl.classList.toggle("rest", note.rest);
+  nowMeta.innerHTML = note.rest
+    ? "<div><b>rest</b></div><div>" + (note.seconds*1000).toFixed(0) + " ms</div>"
+    : `<div><b>${note.frequency.toFixed(1)}</b> Hz</div><div>${(note.seconds*1000).toFixed(0)} ms</div>`;
+}
+
+/* piano roll: x = time, y = pitch, red hairline = playhead */
+function sizeCanvas(){
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = Math.max(1, Math.round(r.width  * dpr));
+  canvas.height = Math.max(1, Math.round(r.height * dpr));
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  paint(playing ? liveIndex() : -1);
+}
+
+function paint(activeIndex){
+  const r = canvas.getBoundingClientRect();
+  const W = r.width, H = r.height, pad = 8;
+  cx.clearRect(0, 0, W, H);
+  if (!current) return;
+
+  const pitched = current.notes.filter(n => !n.rest);
+  let lo = 0, hi = 12;
+  if (pitched.length){
+    lo = Math.min(...pitched.map(n => n.semi));
+    hi = Math.max(...pitched.map(n => n.semi));
+    if (hi - lo < 12){ const mid = (hi+lo)/2; lo = mid - 6; hi = mid + 6; }
+  }
+  const span = hi - lo || 1;
+  const yOf = s => pad + (H - 2*pad) * (1 - (s - lo) / span);
+
+  // octave rules at every C
+  cx.strokeStyle = "rgba(26,33,16,.18)";
+  cx.lineWidth = 1;
+  for (let s = Math.ceil(lo/12)*12; s <= hi; s += 12){
+    const y = Math.round(yOf(s)) + .5;
+    cx.beginPath(); cx.moveTo(0, y); cx.lineTo(W, y); cx.stroke();
+  }
+
+  const bar = Math.max(3, Math.min(9, (H - 2*pad) / (span + 1) * 1.6));
+  const scale = W / current.total;
+
+  current.notes.forEach((n, i) => {
+    const x = n.at * scale;
+    const w = Math.max(1.2, n.seconds * scale - 0.8);
+    if (n.rest){
+      cx.fillStyle = "rgba(26,33,16,.16)";
+      cx.fillRect(x, H - 3, w, 1.5);
+    } else {
+      cx.fillStyle = i === activeIndex ? "#df402c" : "rgba(26,33,16,.72)";
+      cx.fillRect(x, yOf(n.semi) - bar/2, w, bar);
+    }
+  });
+
+  if (activeIndex >= 0){
+    const n = current.notes[activeIndex];
+    const x = Math.round((n.at + n.seconds/2) * scale) + .5;
+    cx.strokeStyle = "rgba(223,64,44,.85)";
+    cx.beginPath(); cx.moveTo(x, 0); cx.lineTo(x, H); cx.stroke();
+  }
+}
+
+function liveIndex(){
+  const elapsed = audio.currentTime - startedAt;
+  if (elapsed < 0) return -1;
+  const notes = current.notes;
+  for (let i = 0; i < notes.length; i++){
+    if (elapsed < notes[i].at + notes[i].seconds) return i;
+  }
+  return notes.length - 1;
+}
+
+function tick(){
+  if (!playing) return;
+  const elapsed = audio.currentTime - startedAt;
+  if (audio.currentTime >= endsAt){
+    if (loopEl.checked && !stopping){ startPlayback(); return; }
+    teardown();
+    endPlayback();
+    return;
+  }
+  const i = liveIndex();
+  clockEl.textContent = fmt(elapsed);
+  if (i >= 0){ setNow(current.notes[i]); paint(i); }
+  requestAnimationFrame(tick);
+}
+
+/* wiring */
+playEl.addEventListener("click", () => {
+  if (!playing) startPlayback();
+  else if (!stopping) stopPlayback();      // already stopping: let it finish
+});
+cancelEl.addEventListener("click", cancelPlayback);
+srcEl.addEventListener("input", () => { if (!playing) compile(); });
+tuningEl.addEventListener("change", () => { if (!playing) compile(); });
+voiceEl.addEventListener("change", () => {
+  syncDuty();
+  if (playing){ cancelPlayback(); startPlayback(); }
+});
+dutyEl.addEventListener("input", () => {
+  dutyVal.textContent = dutyEl.value + "%";
+  if (playing && !dutyEl.disabled){ cancelPlayback(); startPlayback(); }
+});
+
+/* the duty control only means anything for the pulse-based voices */
+function syncDuty(){
+  const spec = VOICES[voiceEl.value] || VOICES.sine;
+  const usable = !spec.fixedDuty && spec.partials.some(p => p.duty != null);
+  dutyEl.disabled = !usable;
+  dutyEl.closest(".knob").style.opacity = usable ? 1 : 0.4;
+}
+volEl.addEventListener("input", () => { if (master) master.gain.value = volEl.value / 100; });
+window.addEventListener("resize", sizeCanvas);
+document.addEventListener("keydown", e => {
+  const tag = (e.target.tagName || "").toLowerCase();
+  const inControl = ["textarea","input","select","button","a"].includes(tag);
+  if (e.code === "Escape" && playing){
+    e.preventDefault();
+    cancelPlayback();
+  } else if (e.code === "Space" && !inControl){
+    e.preventDefault();
+    if (!playing) startPlayback();
+    else if (!stopping) stopPlayback();
+  }
+});
+
+/* ------------------------------------------------------------------ notes */
+
+const tabs = [...document.querySelectorAll('[role="tab"]')];
+
+function selectTab(tab){
+  for (const t of tabs){
+    const on = t === tab;
+    t.setAttribute("aria-selected", on ? "true" : "false");
+    document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+  }
+}
+tabs.forEach((tab, i) => {
+  tab.addEventListener("click", () => selectTab(tab));
+  tab.addEventListener("keydown", e => {
+    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    e.preventDefault();
+    const next = tabs[(i + step + tabs.length) % tabs.length];
+    selectTab(next); next.focus();
+  });
+});
+
+const notesToggle = document.getElementById("notesToggle");
+const notesBody   = document.getElementById("notesBody");
+notesToggle.addEventListener("click", () => {
+  const open = notesBody.hidden;
+  notesBody.hidden = !open;
+  notesToggle.setAttribute("aria-expanded", open ? "true" : "false");
+  notesToggle.textContent = open ? "Hide" : "Show";
+});
+
+/* the voice table is generated from the definitions, so it can't drift */
+function describeFilters(spec){
+  if (!spec.filters) return "none";
+  return spec.filters.map(f => {
+    const hz = f.f >= 1000 ? (f.f/1000).toFixed(f.f % 1000 ? 1 : 0) + " kHz" : f.f + " Hz";
+    if (f.type === "peaking") return `+${f.gain} dB @ ${hz} (Q ${f.Q})`;
+    return `${f.type} ${hz}`;
+  }).join(" → ");
+}
+function buildVoiceTable(){
+  const labels = {};
+  for (const opt of voiceEl.options) labels[opt.value] = opt.textContent;
+  const rows = Object.entries(VOICES).map(([key, spec]) => {
+    const p = spec.partials[0];
+    let source;
+    if (spec.partials.length > 1) source = `${spec.partials.length} sine partials`;
+    else if (p.duty != null) source = spec.fixedDuty
+      ? `pulse, ${Math.round(p.duty*100)}% fixed`
+      : "pulse, duty from slider";
+    else source = p.type;
+    return `<tr><td>${labels[key] || key}</td><td>${source}</td>` +
+           `<td>${spec.env}</td><td>${describeFilters(spec)}</td></tr>`;
+  });
+  document.querySelector("#voiceTable tbody").innerHTML = rows.join("");
+}
+buildVoiceTable();
+
+sizeCanvas();
+syncDuty();
+compile();
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Cloudflare Workers with static assets.
+#
+# There is no build step and no Worker script — Cloudflare serves the contents
+# of ./public straight from the edge. If you later want dynamic behaviour, add
+# a `main = "./src/index.ts"` entry point and the static assets keep working
+# alongside it via the ASSETS binding.
+
+name = "rtttl-bench"
+compatibility_date = "2026-08-05"
+
+[assets]
+directory = "./public"
+
+# Requests that match no file return the 404 page if you add public/404.html.
+# Do not set this to "single-page-application" — this is not an SPA, and that
+# setting would serve index.html for every unmatched path.
+not_found_handling = "none"
+
+[observability]
+enabled = true

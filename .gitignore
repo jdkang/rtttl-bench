@@ -1,0 +1,33 @@
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+.dev.vars.*
+wrangler.toml.bak
+
+# Node (only present if you add tooling later)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local scratch
+/tmp/
+*.local

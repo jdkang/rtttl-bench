@@ -1,0 +1,15 @@
+# Cloudflare serves these natively for both Workers static assets and Pages.
+# Keep this file inside the assets directory or it will be ignored.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), interest-cohort=()
+  # The app is a single file with an inline <script> and inline styles, so
+  # 'unsafe-inline' is required. It still blocks any external script or
+  # connection, which is the part worth having here.
+  Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
