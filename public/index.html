@@ -213,10 +213,12 @@
     resize:vertical;
     transition:border-color .12s ease, box-shadow .12s ease;
   }
-  .editor[data-state=""]{--state:var(--bg3)}
-  .editor[data-state="ok"]{--state:var(--gb-green-lo)}
-  .editor[data-state="warn"]{--state:var(--gb-yellow)}
-  .editor[data-state="err"]{--state:var(--gb-red)}
+  /* Rail state is carried by border style and width as well as hue, so it
+     still reads in greyscale or with a colour vision deficiency. */
+  .editor[data-state=""]{--state:var(--bg3);border-left-width:3px;border-left-style:solid}
+  .editor[data-state="ok"]{--state:var(--gb-green-lo);border-left-width:3px;border-left-style:solid}
+  .editor[data-state="warn"]{--state:var(--gb-yellow);border-left-width:4px;border-left-style:dashed}
+  .editor[data-state="err"]{--state:var(--gb-red);border-left-width:6px;border-left-style:solid}
   .editor:focus-within{border-top-color:var(--focus);border-right-color:var(--focus);border-bottom-color:var(--focus);box-shadow:0 0 0 3px rgba(131,165,152,.18)}
 
   .hl,
@@ -263,7 +265,8 @@
   .t-dot{color:var(--tok-dot)}
   .t-rest{color:var(--tok-rest);font-style:italic}
   .t-sep{color:var(--tok-sep)}
-  .s-warn{text-decoration:underline wavy var(--gb-yellow);text-underline-offset:3px}
+  /* dotted vs wavy, so severity is a shape difference and not only a hue one */
+  .s-warn{text-decoration:underline dotted var(--gb-yellow);text-decoration-thickness:2px;text-underline-offset:3px}
   .s-err{text-decoration:underline wavy var(--gb-red);text-underline-offset:3px}
 
   .msg{min-height:19px;margin-top:7px;font-size:var(--fs-xs);line-height:1.5}
@@ -495,6 +498,24 @@
     .transport,.cancel{width:100%}
     .st-right{margin-left:0}
   }
+  /* Windows High Contrast replaces the palette wholesale. Anything conveyed by
+     a background or a custom colour has to be re-expressed with a border or a
+     system colour keyword, or it disappears entirely. */
+  @media (forced-colors: active){
+    .unit,.editor,.panel-wrap,select,input[type=checkbox],
+    .reset,.notes-toggle,.cancel,.transport{border:1px solid CanvasText}
+    .transport{background:ButtonFace;color:ButtonText;forced-color-adjust:none}
+    .lcd{border:1px solid CanvasText}
+    /* the phosphor panel and the roll drawn on it are a single picture; keep
+       their own colours so the notes stay visible against the background */
+    .lcd,.roll canvas{forced-color-adjust:none}
+    .tabs button[aria-selected="true"]{border-bottom-color:Highlight;color:Highlight}
+    .editor[data-state="warn"],.editor[data-state="err"]{border-left-color:CanvasText}
+    :focus-visible{outline:2px solid Highlight !important;outline-offset:2px}
+    .s-warn{text-decoration-color:CanvasText}
+    .s-err{text-decoration-color:CanvasText}
+  }
+
   @media (prefers-reduced-motion:reduce){
     .transport,.cancel,.editor,.reset,.notes-toggle,
     .tabs button,select,input[type=checkbox]{transition:none}
