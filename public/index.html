@@ -43,6 +43,8 @@
     --ink:var(--fg1);
     --ink-dim:var(--gray);
     --focus:var(--gb-blue);
+    /* control outlines must clear 3:1 against the panel fill they sit on */
+    --ctl-line:#7c6f64;
 
     /* LCD phosphor, retuned into the gruvbox green-yellow family */
     --lcd:#a9b665;
@@ -189,7 +191,7 @@
      any difference in font, padding, or wrapping shows up as visible drift
      between the glyphs and their colours. Shared rules live in one block. */
   .src{padding:0 var(--sp-4) var(--sp-1)}
-  label.field{
+  .field{
     display:block;font-size:var(--fs-3xs);letter-spacing:.18em;text-transform:uppercase;
     color:var(--ink-dim);margin-bottom:var(--sp-2);
   }
@@ -262,10 +264,19 @@
   .msg.ok{color:var(--ink-dim)}
 
   /* ---- controls ---- */
+  /* The controls sit in a panel a shade darker than the chassis. Grouping by
+     value rather than by colour keeps them distinct from the editor above and
+     the notes below without competing with the LCD for attention. */
+  .panel-wrap{
+    margin:var(--sp-4);
+    background:var(--bg-hard);
+    border:1px solid var(--rule);
+    border-radius:var(--r-md);
+    padding:var(--sp-3) var(--sp-4) var(--sp-4);
+  }
   .panel{
     display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;
-    margin:var(--sp-3) var(--sp-4) var(--sp-4);padding-top:var(--sp-4);
-    border-top:1px solid var(--rule);
+    margin-top:var(--sp-1);
   }
   /* Filled primary, outlined secondary. No gradients, no offset shadow faking
      a raised key, no press translate — those read as a decade-old idiom next
@@ -289,7 +300,7 @@
   .cancel{
     appearance:none;cursor:pointer;
     height:44px;padding:0 var(--sp-4);
-    border:1px solid var(--rule);border-radius:var(--r-md);
+    border:1px solid var(--ctl-line);border-radius:var(--r-md);
     background:transparent;color:var(--fg3);
     font:700 var(--fs-sm)/1 var(--mono);
     letter-spacing:.12em;text-transform:uppercase;
@@ -304,11 +315,11 @@
   .knob>span{font-size:var(--fs-3xs);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
   .knob>span b{color:var(--fg3);font-weight:600}
   select{
-    appearance:none;background:var(--bg-hard) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='6'><path d='M0 0h9L4.5 6z' fill='%23a89984'/></svg>") no-repeat right 9px center;
-    color:var(--ink);border:1px solid var(--rule);border-radius:var(--r-sm);
+    appearance:none;background:var(--bg1) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='9' height='6'><path d='M0 0h9L4.5 6z' fill='%23a89984'/></svg>") no-repeat right 9px center;
+    color:var(--ink);border:1px solid var(--ctl-line);border-radius:var(--r-sm);
     padding:6px 26px 6px 9px;font:400 var(--fs-xs) var(--mono);cursor:pointer;
   }
-  select:hover{border-color:var(--bg4)}
+  select:hover{border-color:var(--gray)}
   select:focus-visible,input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
   input[type=range]{
@@ -316,7 +327,7 @@
     width:112px;height:16px;background:transparent;cursor:pointer;
   }
   input[type=range]::-webkit-slider-runnable-track{
-    height:4px;border-radius:2px;background:var(--bg3);
+    height:4px;border-radius:2px;background:var(--ctl-line);
   }
   input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none;appearance:none;
@@ -324,7 +335,7 @@
     background:var(--lcd);border:1px solid var(--bg-hard);
     box-shadow:0 1px 2px rgba(0,0,0,.55);
   }
-  input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--bg3)}
+  input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--ctl-line)}
   input[type=range]::-moz-range-thumb{
     width:12px;height:12px;border-radius:50%;
     background:var(--lcd);border:1px solid var(--bg-hard);
@@ -337,8 +348,8 @@
   input[type=checkbox]{
     appearance:none;-webkit-appearance:none;
     width:16px;height:16px;margin:0;cursor:pointer;
-    border:1px solid var(--bg4);border-radius:var(--r-sm);
-    background:var(--bg-hard);
+    border:1px solid var(--ctl-line);border-radius:var(--r-sm);
+    background:var(--bg1);
     display:grid;place-content:center;
     transition:background .12s ease, border-color .12s ease;
   }
@@ -352,12 +363,12 @@
   input[type=checkbox]:checked::after{opacity:1}
 
   .reset{
-    margin-left:auto;background:none;border:1px solid var(--rule);border-radius:var(--r-sm);
+    margin-left:auto;background:none;border:1px solid var(--ctl-line);border-radius:var(--r-sm);
     color:var(--ink-dim);font:400 var(--fs-2xs) var(--mono);
     padding:var(--sp-1) 10px;cursor:pointer;
     transition:color .12s ease, border-color .12s ease;
   }
-  .reset:hover{color:var(--ink);border-color:var(--bg4)}
+  .reset:hover{color:var(--ink);border-color:var(--gray)}
   .reset:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
   /* ---- service notes ---- */
@@ -472,7 +483,7 @@
 
   <div class="head">
     <div class="mark">RTTTL <span>Bench</span></div>
-    <div class="sub">monophonic tone generator &middot; web audio</div>
+    <div class="sub">audition RTTTL before you flash it</div>
     <a class="gh" href="https://github.com/jdkang/rtttl-bench" target="_blank" rel="noopener" aria-label="Source on GitHub">
       <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
     </a>
@@ -506,47 +517,50 @@
     <div class="msg ok" id="msg">Paste a tune and press play.</div>
   </div>
 
-  <div class="panel">
-    <button class="transport" id="play" aria-live="polite">Play</button>
-    <button class="cancel" id="cancel" disabled title="Cut playback immediately">Cancel</button>
-    <div class="knobs">
-      <label class="knob"><span>Voice</span>
-        <select id="voice">
-          <optgroup label="Bare oscillator">
-            <option value="sine" selected>sine — rtttl.js original</option>
-            <option value="triangle">triangle</option>
-            <option value="square">square</option>
-            <option value="sawtooth">sawtooth</option>
-          </optgroup>
-          <optgroup label="Transducers">
-            <option value="apollo">Apollo piezo (BTN-1, MSR-2…)</option>
-            <option value="piezo12">piezo disc, 12 mm</option>
-            <option value="piezo30">piezo disc, 30 mm</option>
-            <option value="magnetic">magnetic buzzer</option>
-            <option value="speaker">tiny paper speaker</option>
-          </optgroup>
-          <optgroup label="Pulse / chip">
-            <option value="pwm25">PWM, 25% duty</option>
-            <option value="pwm125">PWM, 12.5% duty</option>
-            <option value="bell">bell / music box</option>
-          </optgroup>
-        </select>
-      </label>
-      <label class="knob"><span>PWM duty <b id="dutyVal">60%</b></span>
-        <input type="range" id="duty" min="5" max="95" step="5" value="60">
-      </label>
-      <label class="knob"><span>Volume</span>
-        <input type="range" id="vol" min="0" max="30" value="10">
-      </label>
-      <label class="knob"><span>Tuning</span>
-        <select id="tuning">
-          <option value="std" selected>standard A4=440</option>
-          <option value="demo">rtttl.js demo (+9 st)</option>
-        </select>
-      </label>
-      <label class="check"><input type="checkbox" id="loop"> Loop</label>
+  <div class="panel-wrap">
+    <span class="field">Controls</span>
+    <div class="panel">
+      <button class="transport" id="play" aria-live="polite">Play</button>
+      <button class="cancel" id="cancel" disabled title="Cut playback immediately">Cancel</button>
+      <div class="knobs">
+        <label class="knob"><span>Voice</span>
+          <select id="voice">
+            <optgroup label="Bare oscillator">
+              <option value="sine" selected>sine — rtttl.js original</option>
+              <option value="triangle">triangle</option>
+              <option value="square">square</option>
+              <option value="sawtooth">sawtooth</option>
+            </optgroup>
+            <optgroup label="Transducers">
+              <option value="apollo">Apollo piezo (BTN-1, MSR-2…)</option>
+              <option value="piezo12">piezo disc, 12 mm</option>
+              <option value="piezo30">piezo disc, 30 mm</option>
+              <option value="magnetic">magnetic buzzer</option>
+              <option value="speaker">tiny paper speaker</option>
+            </optgroup>
+            <optgroup label="Pulse / chip">
+              <option value="pwm25">PWM, 25% duty</option>
+              <option value="pwm125">PWM, 12.5% duty</option>
+              <option value="bell">bell / music box</option>
+            </optgroup>
+          </select>
+        </label>
+        <label class="knob"><span>PWM duty <b id="dutyVal">60%</b></span>
+          <input type="range" id="duty" min="5" max="95" step="5" value="60">
+        </label>
+        <label class="knob"><span>Volume</span>
+          <input type="range" id="vol" min="0" max="30" value="10">
+        </label>
+        <label class="knob"><span>Tuning</span>
+          <select id="tuning">
+            <option value="std" selected>standard A4=440</option>
+            <option value="demo">rtttl.js demo (+9 st)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="loop"> Loop</label>
+      </div>
+      <button class="reset" id="reset" title="Restore defaults and forget saved settings">Reset settings</button>
     </div>
-    <button class="reset" id="reset" title="Restore defaults and forget saved settings">Reset settings</button>
   </div>
 
   <section class="notes">
