@@ -555,7 +555,7 @@
     <label class="field" for="src">RTTTL string</label>
     <div class="editor" id="editor">
       <pre class="hl" id="hl" aria-hidden="true"></pre>
-      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">Scale:d=32,o=5,b=160:c,d,e,f,g,a,b,c6,b,a,g,f,e,d,c</textarea>
+      <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">GranVals:d=4,o=5,b=180:8e6,8d6,f#,g#,8c#6,8b,d,e,8b,8a,c#,e,2a</textarea>
     </div>
     <div class="examples">
       <span class="ex-label" id="exLabel">load</span>
@@ -901,6 +901,16 @@ function pulseWave(duty){
    the default voice comes straight from player.coffee: ramp up over 1 ms,
    hold, ramp down over the last 40 ms, then 10 ms of silence. */
 
+/* Ceiling for the master gain. Measured, not guessed: at unity the loudest
+   voice is `bell` at 1.36 peak, because its three partials sum to 1.48
+   before its 0.95 trim. 0.95/1.36 = 0.70, which keeps every voice inside
+   full scale at maximum volume. The old mapping capped at 0.3, which is
+   why the app measured -14 dBFS flat out and read as silent on laptop
+   speakers. Re-measure this if a voice or a trim changes. */
+const MAX_GAIN = 0.7;
+function masterGain(){ return (volEl.value / volEl.max) * MAX_GAIN; }
+function applyVolume(){ if (master) master.gain.value = masterGain(); }
+
 let audio = null, master = null;
 let voiceNodes = null;                     // {oscs, gain, tail}
 let startedAt = 0, endsAt = 0, playing = false, stopping = false;
@@ -973,7 +983,7 @@ function ensureAudio(){
   const AC = window.AudioContext || window.webkitAudioContext;
   audio = new AC();
   master = audio.createGain();
-  master.gain.value = volEl.value / 100;
+  master.gain.value = masterGain();
   master.connect(audio.destination);
 }
 
@@ -1518,7 +1528,7 @@ function resetSettings(){
   setNotesOpen(false);          // matches the markup default
   dutyVal.textContent = dutyEl.value + "%";
   syncVol();
-  if (master) master.gain.value = volEl.value / 100;
+  applyVolume();
   syncDuty();
   compile();
 }
@@ -1554,7 +1564,7 @@ function syncDuty(){
   /* say why it is dead rather than just greying it out */
   dutyVal.textContent = usable ? dutyEl.value + "%" : "n/a";
 }
-volEl.addEventListener("input", () => { saveSettings(); syncVol(); if (master) master.gain.value = volEl.value / 100; });
+volEl.addEventListener("input", () => { saveSettings(); syncVol(); applyVolume(); });
 window.addEventListener("resize", sizeCanvas);
 document.addEventListener("keydown", e => {
   const tag = (e.target.tagName || "").toLowerCase();

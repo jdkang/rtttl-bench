@@ -152,6 +152,16 @@ for every profile across note lengths from ~12 ms to several seconds.
 Then load the page and actually listen. Audio bugs are frequently silent in a
 syntax check and obvious in one second of playback.
 
+Note that "the graph was built and the transport advanced" proves nothing about
+whether sound comes out — a headless check that drives playback with a synthetic
+click and `--autoplay-policy=no-user-gesture-required` cannot catch an
+audibility bug at all. To test output for real, use a trusted input event and
+tap the master node with an `AnalyserNode` to measure peak amplitude.
+
+`MAX_GAIN` (0.7) is a measured value, not a preference: at unity the loudest
+voice is `bell` at 1.36 peak, so anything higher clips it. If you change a voice
+or a `trim`, re-measure every voice's peak before touching that constant.
+
 ## Deployment
 
 `wrangler.toml` targets Cloudflare Workers with static assets serving `./public`.
