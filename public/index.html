@@ -1220,16 +1220,29 @@ function scanNote(str, from, to, push){
   }
 }
 
-function renderHighlight(){
+function paintHighlight(){
   const raw = srcEl.value;
   let html = "";
   for (const sp of tokenizeRTTTL(raw)){
+    const text = escapeHTML(raw.slice(sp.s, sp.e));
     const cls = "t-" + sp.cls + (sp.sev ? " s-" + sp.sev : "");
-    html += `<span class="${cls}">${escapeHTML(raw.slice(sp.s, sp.e))}</span>`;
+    html += `<span class="${cls}">${text}</span>`;
   }
   // trailing newline: a <pre> collapses its final line and shifts the last row
   hlEl.innerHTML = html + "\n";
   syncScroll();
+}
+
+/* Coalesce into one paint per frame. Holding a key down fires input far faster
+   than the display refreshes, and every one of those was re-tokenising and
+   rebuilding the whole document. */
+let highlightPending = 0;
+function renderHighlight(){
+  if (highlightPending) return;
+  highlightPending = requestAnimationFrame(() => {
+    highlightPending = 0;
+    paintHighlight();
+  });
 }
 
 function syncScroll(){
@@ -1668,7 +1681,7 @@ buildVoiceTable();
 
 loadSettings();
 syncVol();
-renderHighlight();
+paintHighlight();
 sizeCanvas();
 syncDuty();
 compile();
