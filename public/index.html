@@ -103,6 +103,12 @@
 
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
+  /* available to assistive tech, not painted */
+  .sr-only{
+    position:absolute;width:1px;height:1px;
+    margin:-1px;padding:0;border:0;
+    clip-path:inset(50%);overflow:hidden;white-space:nowrap;
+  }
   body{
     background:radial-gradient(120% 80% at 50% -10%, #32302f 0%, #1d2021 70%);
     min-height:100vh;
@@ -510,7 +516,7 @@
       </div>
       <div class="title" id="songName">no tune loaded</div>
     </div>
-    <div class="roll"><canvas id="roll"></canvas></div>
+    <div class="roll"><canvas id="roll" role="img" aria-label="Piano roll"></canvas></div>
     <div class="lcd-bar">
       <div><span class="k">o</span><b id="mO">—</b></div>
       <div><span class="k">d</span><b id="mD">—</b></div>
@@ -527,12 +533,14 @@
       <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off">Scale:d=32,o=5,b=160:c,d,e,f,g,a,b,c6,b,a,g,f,e,d,c</textarea>
     </div>
     <div class="msg ok" id="msg">Paste a tune and press play.</div>
+    <div class="sr-only" role="status" id="announce"></div>
+    <span class="sr-only" id="dutyNote">Duty cycle only affects the pulse and PWM voices.</span>
   </div>
 
   <div class="panel-wrap">
     <span class="field">Controls</span>
     <div class="panel">
-      <button class="transport" id="play" aria-live="polite">Play</button>
+      <button class="transport" id="play">Play</button>
       <button class="cancel" id="cancel" disabled title="Cut playback immediately">Cancel</button>
       <div class="knobs">
         <label class="knob"><span>Voice</span>
@@ -558,7 +566,7 @@
           </select>
         </label>
         <label class="knob"><span>PWM duty <b id="dutyVal">60%</b></span>
-          <input type="range" id="duty" min="5" max="95" step="5" value="60">
+          <input type="range" id="duty" min="5" max="95" step="5" value="60" aria-describedby="dutyNote">
         </label>
         <label class="knob"><span>Volume</span>
           <input type="range" id="vol" min="0" max="30" value="10">
@@ -1068,6 +1076,7 @@ const stVoice  = document.getElementById("stVoice");
 const stTuning = document.getElementById("stTuning");
 const stWarn   = document.getElementById("stWarn");
 const stWarnWrap = document.getElementById("stWarnWrap");
+const announceEl = document.getElementById("announce");
 
 let current = null;   // last successfully parsed song
 
@@ -1219,6 +1228,31 @@ function refreshStatus(){
   stWarnWrap.hidden = w === 0;
 }
 
+/* The message line is updated on every keystroke, so making it a live region
+   directly would announce constantly while you type. Instead it stays purely
+   visual and a separate off-screen region repeats it once typing settles. */
+let announceTimer = 0;
+function announce(text){
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => {
+    if (announceEl.textContent !== text) announceEl.textContent = text;
+  }, 600);
+}
+
+/* The canvas is a picture to assistive tech, so it needs a description that
+   says what the picture shows rather than how it was drawn. */
+function describeRoll(song){
+  if (!song || !song.notes.length) return "Piano roll: no tune loaded.";
+  const pitched = song.notes.filter(n => !n.rest);
+  if (!pitched.length)
+    return `Piano roll: ${song.notes.length} rests, ${song.total.toFixed(1)} seconds, no pitched notes.`;
+  const name = n => PITCHES[((n.semi % 12) + 12) % 12].toUpperCase() + (Math.floor(n.semi / 12) + 4);
+  const lo = pitched.reduce((a, b) => a.semi <= b.semi ? a : b);
+  const hi = pitched.reduce((a, b) => a.semi >= b.semi ? a : b);
+  return `Piano roll: ${song.notes.length} notes from ${name(lo)} to ${name(hi)}, ` +
+         `${song.total.toFixed(1)} seconds at ${song.b} beats per minute.`;
+}
+
 /* Parse what's in the box and report it.
 
    `apply` is false while a tune is playing. The scheduler and paint() both read
@@ -1238,7 +1272,10 @@ function compile(apply = true){
       msgEl.textContent = `${song.notes.length} notes, ${song.total.toFixed(1)} s.`;
     }
     editorEl.dataset.state = song.warnings.length ? "warn" : "ok";
+    announce(msgEl.textContent);
     if (!apply) return song;
+
+    canvas.setAttribute("aria-label", describeRoll(song));
 
     current = song;
     nameEl.textContent = song.name || "untitled";
@@ -1254,7 +1291,10 @@ function compile(apply = true){
     msgEl.className = "msg err";
     msgEl.textContent = err.message;
     editorEl.dataset.state = "err";
+    announce("Error: " + err.message);
     if (!apply) return null;
+
+    canvas.setAttribute("aria-label", describeRoll(null));
 
     current = null;
     nameEl.textContent = "no tune loaded";
@@ -1468,6 +1508,8 @@ function syncDuty(){
   const usable = !spec.fixedDuty && spec.partials.some(p => p.duty != null);
   dutyEl.disabled = !usable;
   dutyEl.closest(".knob").style.opacity = usable ? 1 : 0.4;
+  /* say why it is dead rather than just greying it out */
+  dutyVal.textContent = usable ? dutyEl.value + "%" : "n/a";
 }
 volEl.addEventListener("input", () => { saveSettings(); if (master) master.gain.value = volEl.value / 100; });
 window.addEventListener("resize", sizeCanvas);
